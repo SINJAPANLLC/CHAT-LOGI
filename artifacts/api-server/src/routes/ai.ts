@@ -3,17 +3,88 @@ import { db, shipmentsTable, conversationsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { StartAiChatBody, SendMessageBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
-import {
-  processAiMessage,
-  extractShipmentInfo,
-  type ExtractedData,
-} from "../lib/ai";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router: IRouter = Router();
 
 function parseId(raw: string | string[]): number {
   const s = Array.isArray(raw) ? raw[0] : raw;
   return parseInt(s, 10);
+}
+
+const SYSTEM_PROMPT = `あなたはSINJAPAN（シンジャパン）の物流AIアシスタントです。
+日本語で丁寧かつ簡潔に応答してください。
+
+あなたの役割：
+- 荷主（配送を依頼したいお客様）から配送の依頼内容をヒアリングする
+- 必要な情報を自然な会話形式で収集する
+- 情報が揃ったら最適な配送プランを提案する
+
+ヒアリングが必要な情報（優先順）：
+1. 集荷先の住所（都道府県・市区町村レベルでOK）
+2. 納品先の住所（都道府県・市区町村レベルでOK）
+3. 荷物の種類（例：機械部品、食品、家電など）
+4. 荷物の数量・重量（例：パレット8枚、約2800kg）
+5. ご希望の集荷日時
+6. 納品期限（あれば）
+7. 集荷先・納品先にフォークリフトはあるか（大型荷物の場合）
+
+ヒアリングのルール：
+- 一度に1〜2個の質問に留める（多すぎると煩わしい）
+- お客様が既に答えた情報は再度聞かない
+- 情報が揃ったら、以下のJSON形式でプランを提案する：
+
+提案フォーマット（情報が全て揃ったら必ず以下のJSON形式を含めること）：
+<proposal>
+{
+  "vehicleType": "4tウイング",
+  "deliveryMethod": "チャーター便",
+  "pickupDatetime": "明日 9:00〜11:00",
+  "deliveryDatetime": "翌日午前中",
+  "estimatedPrice": 85000,
+  "reason": "荷物の重量と距離を考慮し、4tウイングのチャーター便が最適です。",
+  "notes": "フォークリフトが両拠点にあるため、積み降ろしはスムーズに行えます。"
+}
+</proposal>
+
+提案後は「この内容でよろしいですか？」と確認する。
+
+料金の目安（参考）：
+- 軽貨物: 15,000〜25,000円
+- 1tトラック: 25,000〜35,000円
+- 2tトラック: 40,000〜55,000円
+- 4tトラック: 70,000〜90,000円
+- 10tトラック: 120,000〜150,000円
+- 大型トラック: 180,000円〜
+- 長距離（北海道・九州など）は上記の1.5倍程度
+- 緊急便は上記の1.3倍程度`;
+
+// Parse proposal JSON from AI response
+function extractProposal(content: string) {
+  const match = content.match(/<proposal>([\s\S]*?)<\/proposal>/);
+  if (!match) return null;
+  try {
+    return JSON.parse(match[1].trim());
+  } catch {
+    return null;
+  }
+}
+
+// Build message history for OpenAI
+function buildMessages(history: { sender: string; message: string }[], newUserMsg?: string) {
+  const messages: { role: "user" | "assistant" | "system"; content: string }[] = [
+    { role: "system", content: SYSTEM_PROMPT },
+  ];
+  for (const h of history) {
+    messages.push({
+      role: h.sender === "user" ? "user" : "assistant",
+      content: h.message,
+    });
+  }
+  if (newUserMsg) {
+    messages.push({ role: "user", content: newUserMsg });
+  }
+  return messages;
 }
 
 // Start a new AI consultation
@@ -26,9 +97,6 @@ router.post("/ai/start", requireAuth, async (req, res): Promise<void> => {
 
   const { message } = parsed.data;
 
-  // Extract initial data
-  const extracted = extractShipmentInfo(message);
-
   // Create shipment record
   const [shipment] = await db
     .insert(shipmentsTable)
@@ -36,12 +104,6 @@ router.post("/ai/start", requireAuth, async (req, res): Promise<void> => {
       userId: req.session.userId,
       requestText: message,
       status: "ヒアリング中",
-      pickupAddress: extracted.pickupAddress || null,
-      deliveryAddress: extracted.deliveryAddress || null,
-      cargoType: extracted.cargoType || null,
-      cargoQuantity: extracted.cargoQuantity || null,
-      cargoWeight: extracted.cargoWeight || null,
-      pickupDatetime: extracted.pickupDatetime || null,
     })
     .returning();
 
@@ -50,43 +112,51 @@ router.post("/ai/start", requireAuth, async (req, res): Promise<void> => {
     shipmentId: shipment.id,
     sender: "user",
     message,
-    structuredData: JSON.stringify(extracted),
   });
 
-  // Process AI response
-  const aiResult = processAiMessage(message, {}, [message]);
+  // Call OpenAI
+  const completion = await openai.chat.completions.create({
+    model: "gpt-5.6-luna",
+    max_completion_tokens: 1024,
+    messages: buildMessages([], message),
+  });
+
+  const aiMessage = completion.choices[0]?.message?.content ?? "申し訳ありません。エラーが発生しました。";
+  const proposal = extractProposal(aiMessage);
+  // Strip the <proposal> tag from the visible message
+  const visibleMessage = aiMessage.replace(/<proposal>[\s\S]*?<\/proposal>/g, "").trim();
 
   // Save AI response
   await db.insert(conversationsTable).values({
     shipmentId: shipment.id,
     sender: "ai",
-    message: aiResult.question,
-    structuredData: JSON.stringify(aiResult.extractedData),
+    message: visibleMessage,
+    structuredData: proposal ? JSON.stringify(proposal) : null,
   });
 
-  // Update shipment status if complete
-  if (aiResult.isComplete && aiResult.proposal) {
+  // Update shipment if proposal ready
+  if (proposal) {
     await db.update(shipmentsTable).set({
       status: "見積提示",
-      vehicleType: aiResult.proposal.vehicleType,
-      deliveryMethod: aiResult.proposal.deliveryMethod,
-      pickupDatetime: aiResult.proposal.pickupDatetime,
-      deliveryDeadline: aiResult.proposal.deliveryDatetime,
-      customerPrice: aiResult.proposal.estimatedPrice.toString(),
+      vehicleType: proposal.vehicleType,
+      deliveryMethod: proposal.deliveryMethod,
+      pickupDatetime: proposal.pickupDatetime,
+      deliveryDeadline: proposal.deliveryDatetime,
+      customerPrice: proposal.estimatedPrice?.toString(),
       updatedAt: new Date(),
     }).where(eq(shipmentsTable.id, shipment.id));
   }
 
   res.json({
-    message: aiResult.question,
+    message: visibleMessage,
     shipmentId: shipment.id,
-    isComplete: aiResult.isComplete,
-    proposal: aiResult.proposal || null,
-    extractedData: JSON.stringify(aiResult.extractedData),
+    isComplete: !!proposal,
+    proposal: proposal || null,
+    extractedData: "{}",
   });
 });
 
-// Send message in existing conversation
+// Continue conversation
 router.post("/shipments/:id/conversations", requireAuth, async (req, res): Promise<void> => {
   const id = parseId(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
@@ -97,84 +167,67 @@ router.post("/shipments/:id/conversations", requireAuth, async (req, res): Promi
     return;
   }
 
-  // Load conversation history
+  const [shipment] = await db
+    .select()
+    .from(shipmentsTable)
+    .where(eq(shipmentsTable.id, id))
+    .limit(1);
+  if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+
+  // Load full conversation history
   const history = await db
     .select()
     .from(conversationsTable)
     .where(eq(conversationsTable.shipmentId, id))
     .orderBy(conversationsTable.createdAt);
 
-  // Load current shipment
-  const [shipment] = await db
-    .select()
-    .from(shipmentsTable)
-    .where(eq(shipmentsTable.id, id))
-    .limit(1);
-
-  if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
-
-  // Rebuild extracted data from shipment
-  const existingData: ExtractedData = {
-    cargoType: shipment.cargoType || undefined,
-    cargoQuantity: shipment.cargoQuantity || undefined,
-    cargoWeight: shipment.cargoWeight || undefined,
-    cargoSize: shipment.cargoSize || undefined,
-    pickupAddress: shipment.pickupAddress || undefined,
-    deliveryAddress: shipment.deliveryAddress || undefined,
-    pickupDatetime: shipment.pickupDatetime || undefined,
-    deliveryDeadline: shipment.deliveryDeadline || undefined,
-  };
-
   const { message } = parsed.data;
-  const historyTexts = history.map(h => h.message);
 
   // Save user message
-  const updatedData = extractShipmentInfo(message, existingData);
   await db.insert(conversationsTable).values({
     shipmentId: id,
     sender: "user",
     message,
-    structuredData: JSON.stringify(updatedData),
   });
 
-  // Process AI
-  const aiResult = processAiMessage(message, existingData, historyTexts);
+  // Call OpenAI with full history
+  const completion = await openai.chat.completions.create({
+    model: "gpt-5.6-luna",
+    max_completion_tokens: 1024,
+    messages: buildMessages(history, message),
+  });
+
+  const aiMessage = completion.choices[0]?.message?.content ?? "申し訳ありません。エラーが発生しました。";
+  const proposal = extractProposal(aiMessage);
+  const visibleMessage = aiMessage.replace(/<proposal>[\s\S]*?<\/proposal>/g, "").trim();
 
   // Save AI response
   await db.insert(conversationsTable).values({
     shipmentId: id,
     sender: "ai",
-    message: aiResult.question,
-    structuredData: JSON.stringify(aiResult.extractedData),
+    message: visibleMessage,
+    structuredData: proposal ? JSON.stringify(proposal) : null,
   });
 
-  // Update shipment with extracted data
-  const updateData: any = {
-    pickupAddress: aiResult.extractedData.pickupAddress || shipment.pickupAddress,
-    deliveryAddress: aiResult.extractedData.deliveryAddress || shipment.deliveryAddress,
-    cargoType: aiResult.extractedData.cargoType || shipment.cargoType,
-    cargoQuantity: aiResult.extractedData.cargoQuantity || shipment.cargoQuantity,
-    cargoWeight: aiResult.extractedData.cargoWeight || shipment.cargoWeight,
-    pickupDatetime: aiResult.extractedData.pickupDatetime || shipment.pickupDatetime,
-    updatedAt: new Date(),
-  };
-
-  if (aiResult.isComplete && aiResult.proposal) {
-    updateData.status = "見積提示";
-    updateData.vehicleType = aiResult.proposal.vehicleType;
-    updateData.deliveryMethod = aiResult.proposal.deliveryMethod;
-    updateData.customerPrice = aiResult.proposal.estimatedPrice.toString();
-    updateData.deliveryDeadline = aiResult.proposal.deliveryDatetime;
+  // Update shipment with proposal if ready
+  if (proposal) {
+    await db.update(shipmentsTable).set({
+      status: "見積提示",
+      vehicleType: proposal.vehicleType,
+      deliveryMethod: proposal.deliveryMethod,
+      pickupDatetime: proposal.pickupDatetime,
+      deliveryDeadline: proposal.deliveryDatetime,
+      customerPrice: proposal.estimatedPrice?.toString(),
+      updatedAt: new Date(),
+    }).where(eq(shipmentsTable.id, id));
   }
 
-  await db.update(shipmentsTable).set(updateData).where(eq(shipmentsTable.id, id));
-
   res.json({
-    message: aiResult.question,
+    message: visibleMessage,
     shipmentId: id,
-    isComplete: aiResult.isComplete,
-    proposal: aiResult.proposal || null,
-    extractedData: JSON.stringify(aiResult.extractedData),
+    isComplete: !!proposal,
+    proposal: proposal || null,
+    extractedData: "{}",
   });
 });
 
