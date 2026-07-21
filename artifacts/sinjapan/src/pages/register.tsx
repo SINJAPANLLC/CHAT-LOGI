@@ -40,6 +40,9 @@ export default function Register() {
   const onSubmit = async (data: z.infer<typeof schema>) => {
     try {
       const res = await register.mutateAsync({ data });
+      if ((res as any).token) {
+        localStorage.setItem('sinjapan_auth_token', (res as any).token);
+      }
       setLocation('/');
     } catch (err) {
       toast({

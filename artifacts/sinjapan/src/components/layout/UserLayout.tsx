@@ -10,6 +10,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
 
   const handleLogout = () => {
+    localStorage.removeItem('sinjapan_auth_token');
     logout.mutate(undefined, {
       onSuccess: () => setLocation('/login')
     });

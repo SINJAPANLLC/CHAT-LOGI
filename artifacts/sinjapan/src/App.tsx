@@ -3,6 +3,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import NotFound from '@/pages/not-found';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
+import { setAuthTokenGetter } from '@workspace/api-client-react';
+
+// Send auth token from localStorage on every API request (bypasses cookie issues)
+setAuthTokenGetter(() => localStorage.getItem('sinjapan_auth_token'));
 
 import { UserLayout } from '@/components/layout/UserLayout';
 import { AdminLayout } from '@/components/layout/AdminLayout';

@@ -38,6 +38,10 @@ export default function Login() {
   const onSubmit = async (data: z.infer<typeof schema>) => {
     try {
       const res = await login.mutateAsync({ data });
+      // Store token for Bearer auth (cookie-independent)
+      if ((res as any).token) {
+        localStorage.setItem('sinjapan_auth_token', (res as any).token);
+      }
       if (res.user.role === 'admin') setLocation('/admin');
       else setLocation('/');
     } catch (err) {
