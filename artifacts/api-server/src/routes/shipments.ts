@@ -1,0 +1,191 @@
+import { Router, type IRouter } from "express";
+import { db, shipmentsTable, usersTable, carriersTable } from "@workspace/db";
+import { eq, desc, and, gte, lte, inArray } from "drizzle-orm";
+import {
+  CreateShipmentBody,
+  UpdateShipmentBody,
+  UpdateShipmentStatusBody,
+  ListShipmentsQueryParams,
+  GetShipmentParams,
+  UpdateShipmentParams,
+  UpdateShipmentStatusParams,
+} from "@workspace/api-zod";
+import { requireAuth } from "../middlewares/auth";
+
+const router: IRouter = Router();
+
+function parseId(raw: string | string[]): number {
+  const s = Array.isArray(raw) ? raw[0] : raw;
+  return parseInt(s, 10);
+}
+
+function formatShipment(s: any, user?: any, carrier?: any) {
+  return {
+    ...s,
+    customerPrice: s.customerPrice ? Number(s.customerPrice) : null,
+    carrierCost: s.carrierCost ? Number(s.carrierCost) : null,
+    grossProfit: s.grossProfit ? Number(s.grossProfit) : null,
+    createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
+    updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
+    user: user ? { ...user, createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt } : null,
+    carrier: carrier ? { ...carrier, averageCost: carrier.averageCost ? Number(carrier.averageCost) : null, onTimeRate: carrier.onTimeRate ? Number(carrier.onTimeRate) : null, rating: carrier.rating ? Number(carrier.rating) : null, createdAt: carrier.createdAt instanceof Date ? carrier.createdAt.toISOString() : carrier.createdAt } : null,
+  };
+}
+
+router.get("/shipments", requireAuth, async (req, res): Promise<void> => {
+  const parsed = ListShipmentsQueryParams.safeParse(req.query);
+  const params = parsed.success ? parsed.data : {};
+
+  const isAdmin = req.session.userRole === "admin";
+  const conditions: any[] = [];
+
+  // Non-admins can only see their own shipments
+  if (!isAdmin) {
+    conditions.push(eq(shipmentsTable.userId, req.session.userId));
+  } else if (params.userId) {
+    conditions.push(eq(shipmentsTable.userId, Number(params.userId)));
+  }
+
+  if (params.status) {
+    conditions.push(eq(shipmentsTable.status, params.status as any));
+  }
+  if (params.carrierId) {
+    conditions.push(eq(shipmentsTable.assignedCarrierId, Number(params.carrierId)));
+  }
+  if (params.dateFrom) {
+    conditions.push(gte(shipmentsTable.createdAt, new Date(params.dateFrom)));
+  }
+  if (params.dateTo) {
+    conditions.push(lte(shipmentsTable.createdAt, new Date(params.dateTo)));
+  }
+
+  const page = params.page ? Number(params.page) : 1;
+  const limit = params.limit ? Number(params.limit) : 20;
+  const offset = (page - 1) * limit;
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const items = await db
+    .select()
+    .from(shipmentsTable)
+    .where(whereClause)
+    .orderBy(desc(shipmentsTable.createdAt))
+    .limit(limit)
+    .offset(offset);
+
+  // Fetch related users and carriers
+  const userIds = [...new Set(items.map(i => i.userId).filter(Boolean))] as number[];
+  const carrierIds = [...new Set(items.map(i => i.assignedCarrierId).filter(Boolean))] as number[];
+
+  const users = userIds.length > 0
+    ? await db.select().from(usersTable).where(inArray(usersTable.id, userIds))
+    : [];
+  const carriers = carrierIds.length > 0
+    ? await db.select().from(carriersTable).where(inArray(carriersTable.id, carrierIds))
+    : [];
+
+  const userMap = Object.fromEntries(users.map(u => [u.id, u]));
+  const carrierMap = Object.fromEntries(carriers.map(c => [c.id, c]));
+
+  const [{ count }] = await db
+    .select({ count: db.$count(shipmentsTable, whereClause) })
+    .from(shipmentsTable);
+
+  const formatted = items.map(s =>
+    formatShipment(s, s.userId ? userMap[s.userId] : null, s.assignedCarrierId ? carrierMap[s.assignedCarrierId] : null)
+  );
+
+  res.json({ items: formatted, total: Number(count) });
+});
+
+router.post("/shipments", requireAuth, async (req, res): Promise<void> => {
+  const parsed = CreateShipmentBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [shipment] = await db
+    .insert(shipmentsTable)
+    .values({ ...parsed.data, userId: req.session.userId, status: "受付中" })
+    .returning();
+
+  res.status(201).json(formatShipment(shipment));
+});
+
+router.get("/shipments/:id", requireAuth, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const [shipment] = await db
+    .select()
+    .from(shipmentsTable)
+    .where(eq(shipmentsTable.id, id))
+    .limit(1);
+
+  if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+
+  const isAdmin = req.session.userRole === "admin";
+  if (!isAdmin && shipment.userId !== req.session.userId) {
+    res.status(403).json({ error: "アクセス権限がありません" }); return;
+  }
+
+  const user = shipment.userId
+    ? (await db.select().from(usersTable).where(eq(usersTable.id, shipment.userId)).limit(1))[0]
+    : null;
+  const carrier = shipment.assignedCarrierId
+    ? (await db.select().from(carriersTable).where(eq(carriersTable.id, shipment.assignedCarrierId)).limit(1))[0]
+    : null;
+
+  res.json(formatShipment(shipment, user, carrier));
+});
+
+router.patch("/shipments/:id", requireAuth, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const parsed = UpdateShipmentBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const updates: any = { ...parsed.data, updatedAt: new Date() };
+  // Calculate gross profit if both prices present
+  if (updates.customerPrice != null && updates.carrierCost != null) {
+    updates.grossProfit = (Number(updates.customerPrice) - Number(updates.carrierCost)).toString();
+  }
+
+  const [shipment] = await db
+    .update(shipmentsTable)
+    .set(updates)
+    .where(eq(shipmentsTable.id, id))
+    .returning();
+
+  if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+
+  res.json(formatShipment(shipment));
+});
+
+router.patch("/shipments/:id/status", requireAuth, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const parsed = UpdateShipmentStatusBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const [shipment] = await db
+    .update(shipmentsTable)
+    .set({ status: parsed.data.status as any, updatedAt: new Date() })
+    .where(eq(shipmentsTable.id, id))
+    .returning();
+
+  if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+
+  res.json(formatShipment(shipment));
+});
+
+export default router;

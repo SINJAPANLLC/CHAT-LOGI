@@ -1,0 +1,73 @@
+import {
+  pgTable,
+  serial,
+  text,
+  numeric,
+  integer,
+  timestamp,
+  pgEnum,
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+import { usersTable } from "./users";
+import { carriersTable } from "./carriers";
+
+export const shipmentStatusEnum = pgEnum("shipment_status", [
+  "受付中",
+  "ヒアリング中",
+  "見積提示",
+  "顧客承認",
+  "手配中",
+  "配車確定",
+  "集荷完了",
+  "配送中",
+  "納品完了",
+  "請求完了",
+  "キャンセル",
+]);
+
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "未決済",
+  "決済処理中",
+  "決済完了",
+  "請求書発行済み",
+  "入金確認済み",
+  "返金済み",
+]);
+
+export const shipmentsTable = pgTable("shipments", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => usersTable.id),
+  requestText: text("request_text"),
+  pickupAddress: text("pickup_address"),
+  deliveryAddress: text("delivery_address"),
+  cargoType: text("cargo_type"),
+  cargoQuantity: text("cargo_quantity"),
+  cargoWeight: text("cargo_weight"),
+  cargoSize: text("cargo_size"),
+  pickupDatetime: text("pickup_datetime"),
+  deliveryDeadline: text("delivery_deadline"),
+  vehicleType: text("vehicle_type"),
+  deliveryMethod: text("delivery_method"),
+  customerPrice: numeric("customer_price", { precision: 12, scale: 2 }),
+  carrierCost: numeric("carrier_cost", { precision: 12, scale: 2 }),
+  grossProfit: numeric("gross_profit", { precision: 12, scale: 2 }),
+  status: shipmentStatusEnum("status").notNull().default("受付中"),
+  assignedCarrierId: integer("assigned_carrier_id").references(
+    () => carriersTable.id
+  ),
+  assignedDriverName: text("assigned_driver_name"),
+  paymentStatus: paymentStatusEnum("payment_status"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertShipmentSchema = createInsertSchema(shipmentsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertShipment = z.infer<typeof insertShipmentSchema>;
+export type Shipment = typeof shipmentsTable.$inferSelect;
