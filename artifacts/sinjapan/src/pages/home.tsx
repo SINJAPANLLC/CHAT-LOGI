@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
-import { useCreateShipment, useStartAiChat } from '@workspace/api-client-react';
+import { useCreateShipment, useStartAiChat, useGetMe } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+const DRAFT_KEY = 'sinjapan_draft_message';
 
 const EXAMPLES = [
   "明日の午後、東京から大阪までパレット3枚を運びたいです。",
@@ -13,40 +15,45 @@ const EXAMPLES = [
 ];
 
 export default function Home() {
-  const [text, setText] = useState('');
+  const [text, setText] = useState(() => localStorage.getItem(DRAFT_KEY) || '');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
+
+  const { data: user, isLoading: authLoading } = useGetMe();
   const createShipment = useCreateShipment();
   const startAiChat = useStartAiChat();
 
   const isSubmitting = createShipment.isPending || startAiChat.isPending;
 
+  // Clear draft once we land here after login
+  useEffect(() => {
+    if (user) localStorage.removeItem(DRAFT_KEY);
+  }, [user]);
+
   const handleSubmit = async () => {
     if (!text.trim()) return;
 
+    // Not logged in → save draft and redirect to login
+    if (!user) {
+      localStorage.setItem(DRAFT_KEY, text);
+      setLocation('/login');
+      return;
+    }
+
     try {
-      // 1. Create a draft shipment
-      const shipment = await createShipment.mutateAsync({
-        data: {
-          requestText: text
-        }
-      });
-
-      // 2. Start the AI chat context with the message
+      // Start the AI chat (creates shipment + first AI response in one call)
       const chatRes = await startAiChat.mutateAsync({
-        data: {
-          message: text
-        }
+        data: { message: text }
       });
 
-      // Navigate to chat interface
-      setLocation(`/chat/${shipment.id}`);
+      localStorage.removeItem(DRAFT_KEY);
+      // Navigate to chat interface using the shipment id from the AI response
+      setLocation(`/chat/${chatRes.shipmentId}`);
     } catch (err) {
       toast({
         variant: "destructive",
         title: "エラー",
-        description: "申し訳ありません。エラーが発生しました。"
+        description: "申し訳ありません。エラーが発生しました。もう一度お試しください。"
       });
     }
   };
