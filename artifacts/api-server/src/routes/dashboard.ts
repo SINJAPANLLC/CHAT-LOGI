@@ -31,19 +31,17 @@ router.get("/dashboard/stats", requireAdmin, async (_req, res): Promise<void> =>
 
   const avgProfitRate = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
 
+  const APPROVED_STATUSES = ["顧客承認", "受付完了", "手配中", "配車確定", "集荷完了", "配送中", "納品完了", "請求完了"];
+  const totalApproved = allShipments.filter(s => APPROVED_STATUSES.includes(s.status)).length;
+
   res.json({
-    todayConsultations: todayShipments.length,
-    pendingQuotes: statusCounts["ヒアリング中"] || 0,
-    approvedToday: todayShipments.filter(s => s.status === "顧客承認").length,
-    inProgress: statusCounts["手配中"] || 0,
-    confirmed: statusCounts["配車確定"] || 0,
-    inTransit: statusCounts["配送中"] || 0,
-    delivered: statusCounts["納品完了"] || 0,
+    totalConsultations: allShipments.length,
+    totalApproved,
+    currentlyArranging: statusCounts["手配中"] || 0,
     totalRevenue: Math.round(totalRevenue),
     totalCost: Math.round(totalCost),
     grossProfit: Math.round(grossProfit),
     avgProfitRate: Math.round(avgProfitRate * 10) / 10,
-    statusBreakdown: Object.entries(statusCounts).map(([status, count]) => ({ status, count })),
   });
 });
 
