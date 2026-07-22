@@ -30,6 +30,7 @@ function formatShipment(s: any, carrier?: any) {
     notes: s.notes,
     assignedDriverName: s.assignedDriverName,
     driverPhone: (s as any).driverPhone,
+    driverVehicleNumber: (s as any).driverVehicleNumber,
     driverLat: (s as any).driverLat ? Number((s as any).driverLat) : null,
     driverLng: (s as any).driverLng ? Number((s as any).driverLng) : null,
     driverLocationUpdatedAt: (s as any).driverLocationUpdatedAt instanceof Date
@@ -79,10 +80,11 @@ router.patch("/driver/:token/info", async (req, res): Promise<void> => {
   const shipment = await findByToken(req.params.token);
   if (!shipment) { res.status(404).json({ error: "指示書が見つかりません" }); return; }
 
-  const { driverName, driverPhone } = req.body;
+  const { driverName, driverPhone, driverVehicleNumber } = req.body;
   const updates: any = {};
   if (driverName !== undefined) updates.assignedDriverName = driverName;
   if (driverPhone !== undefined) updates.driverPhone = driverPhone;
+  if (driverVehicleNumber !== undefined) updates.driverVehicleNumber = driverVehicleNumber;
 
   if (Object.keys(updates).length > 0) {
     await db.update(shipmentsTable).set(updates).where(eq(shipmentsTable.id, shipment.id));

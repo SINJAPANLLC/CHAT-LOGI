@@ -36,6 +36,7 @@ export default function DriverPortal() {
   const [error, setError] = useState('');
   const [driverName, setDriverName] = useState('');
   const [driverPhone, setDriverPhone] = useState('');
+  const [vehicleNumber, setVehicleNumber] = useState('');
   const [savingInfo, setSavingInfo] = useState(false);
   const [infoSaved, setInfoSaved] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
@@ -51,6 +52,7 @@ export default function DriverPortal() {
       setShipment(data);
       setDriverName(data.assignedDriverName || '');
       setDriverPhone(data.driverPhone || '');
+      setVehicleNumber(data.driverVehicleNumber || '');
     } catch {
       setError('指示書が見つかりません。URLをご確認ください。');
     } finally {
@@ -101,7 +103,7 @@ export default function DriverPortal() {
     try {
       await apiFetch(`/api/driver/${token}/info`, {
         method: 'PATCH',
-        body: JSON.stringify({ driverName, driverPhone }),
+        body: JSON.stringify({ driverName, driverPhone, driverVehicleNumber: vehicleNumber }),
       });
       setInfoSaved(true);
       setTimeout(() => setInfoSaved(false), 3000);
@@ -234,9 +236,21 @@ export default function DriverPortal() {
                 className="w-full rounded-lg border border-border px-3 py-2.5 text-sm bg-background outline-none focus:border-foreground/40 transition-colors"
               />
             </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Truck className="h-3.5 w-3.5" />車番
+              </label>
+              <input
+                type="text"
+                value={vehicleNumber}
+                onChange={e => setVehicleNumber(e.target.value)}
+                placeholder="品川 330 あ 1234"
+                className="w-full rounded-lg border border-border px-3 py-2.5 text-sm bg-background outline-none focus:border-foreground/40 transition-colors"
+              />
+            </div>
             <button
               onClick={saveInfo}
-              disabled={savingInfo || (!driverName && !driverPhone)}
+              disabled={savingInfo || (!driverName && !driverPhone && !vehicleNumber)}
               className="w-full py-2.5 rounded-lg bg-foreground text-background text-sm font-medium disabled:opacity-40 transition-opacity hover:opacity-80"
             >
               {savingInfo ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : infoSaved ? '✓ 保存しました' : '情報を保存'}

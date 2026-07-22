@@ -10,7 +10,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   const hasToken = !!localStorage.getItem('sinjapan_auth_token');
   const { data: user } = useGetMe();
   const logout = useLogout();
-  const [, setLocation] = useLocation();
+  const [pathname, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
@@ -99,7 +99,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
 
   const isLoggedIn = !!user;
   // チャットページはフッターなし・フル高さ確保
-  const isChatPage = location.startsWith('/chat/');
+  const isChatPage = pathname.startsWith('/chat/');
 
   return (
     <div className="min-h-[100dvh] flex bg-background font-sans text-foreground">

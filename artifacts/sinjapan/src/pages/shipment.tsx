@@ -264,6 +264,22 @@ export default function Shipment() {
                             <div className="col-span-2 text-sm font-medium">{driverName}</div>
                           </div>
                         )}
+                        {s.driverVehicleNumber && (
+                          <div className="p-4 grid grid-cols-3 gap-4">
+                            <div className="text-sm text-muted-foreground">車番</div>
+                            <div className="col-span-2 text-sm font-medium">{s.driverVehicleNumber}</div>
+                          </div>
+                        )}
+                        {s.driverPhone && (
+                          <div className="p-4 grid grid-cols-3 gap-4">
+                            <div className="text-sm text-muted-foreground">ドライバー連絡先</div>
+                            <div className="col-span-2">
+                              <a href={`tel:${s.driverPhone}`} className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline">
+                                <Phone className="h-3.5 w-3.5 text-muted-foreground" />{s.driverPhone}
+                              </a>
+                            </div>
+                          </div>
+                        )}
                         {carrier?.phone && (
                           <div className="p-4 grid grid-cols-3 gap-4">
                             <div className="text-sm text-muted-foreground">連絡先</div>
