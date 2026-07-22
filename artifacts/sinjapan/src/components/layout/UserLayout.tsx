@@ -21,7 +21,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   const NavContent = () => (
     <div className="flex flex-col h-full">
       {/* Top: logo + close (mobile) */}
-      <div className="flex items-center justify-between px-2 pt-4 pb-2">
+      <div className="flex items-center justify-between pl-0 pr-2 pt-4 pb-2">
         <Link href="/" onClick={() => setMobileOpen(false)}>
           <img src="/logo.jpg" alt="Chat LOGI" className="h-7 w-auto" />
         </Link>
