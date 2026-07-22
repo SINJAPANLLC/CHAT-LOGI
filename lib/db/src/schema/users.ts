@@ -13,6 +13,10 @@ export const usersTable = pgTable("users", {
   phone: text("phone"),
   role: userRoleEnum("role").notNull().default("user"),
   billingAddress: text("billing_address"),
+  cardHolderName: text("card_holder_name"),
+  cardBrand: text("card_brand"),
+  cardLast4: text("card_last4"),
+  cardExpiry: text("card_expiry"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

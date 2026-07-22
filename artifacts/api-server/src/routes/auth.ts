@@ -95,8 +95,15 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
 });
 
 router.patch("/auth/me", requireAuth, async (req, res): Promise<void> => {
-  const { name, currentPassword, newPassword } = req.body as {
+  const { name, companyName, phone, billingAddress, cardHolderName, cardBrand, cardLast4, cardExpiry, currentPassword, newPassword } = req.body as {
     name?: string;
+    companyName?: string;
+    phone?: string;
+    billingAddress?: string;
+    cardHolderName?: string;
+    cardBrand?: string;
+    cardLast4?: string;
+    cardExpiry?: string;
     currentPassword?: string;
     newPassword?: string;
   };
@@ -109,9 +116,14 @@ router.patch("/auth/me", requireAuth, async (req, res): Promise<void> => {
 
   const updates: Partial<typeof usersTable.$inferInsert> = {};
 
-  if (name !== undefined) {
-    updates.name = name;
-  }
+  if (name !== undefined) updates.name = name;
+  if (companyName !== undefined) updates.companyName = companyName;
+  if (phone !== undefined) updates.phone = phone;
+  if (billingAddress !== undefined) updates.billingAddress = billingAddress;
+  if (cardHolderName !== undefined) updates.cardHolderName = cardHolderName;
+  if (cardBrand !== undefined) updates.cardBrand = cardBrand;
+  if (cardLast4 !== undefined) updates.cardLast4 = cardLast4;
+  if (cardExpiry !== undefined) updates.cardExpiry = cardExpiry;
 
   if (newPassword) {
     if (!currentPassword) {
