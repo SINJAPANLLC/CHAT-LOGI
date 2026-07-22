@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useListCarriers, useCreateCarrier } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Loader2, Plus, Star } from 'lucide-react';
@@ -15,18 +14,12 @@ export default function AdminCarriers() {
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [formData, setFormData] = useState({
-    companyName: '',
-    contactName: '',
-    phone: '',
-    serviceAreas: '',
-    vehicleTypes: ''
+    companyName: '', contactName: '', phone: '', serviceAreas: '', vehicleTypes: ''
   });
 
   const handleCreate = async () => {
     try {
-      await createCarrier.mutateAsync({
-        data: formData
-      });
+      await createCarrier.mutateAsync({ data: formData });
       setIsAddOpen(false);
       setFormData({ companyName: '', contactName: '', phone: '', serviceAreas: '', vehicleTypes: '' });
       queryClient.invalidateQueries({ queryKey: ['/api/carriers'] });
@@ -37,66 +30,37 @@ export default function AdminCarriers() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">運送会社管理</h1>
-        
+
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              新規登録
-            </Button>
+            <Button className="gap-2"><Plus className="h-4 w-4" />新規登録</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>運送会社の登録</DialogTitle>
-            </DialogHeader>
+            <DialogHeader><DialogTitle>運送会社の登録</DialogTitle></DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>会社名</Label>
-                <Input 
-                  value={formData.companyName} 
-                  onChange={e => setFormData({...formData, companyName: e.target.value})} 
-                  placeholder="株式会社物流" 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>担当者名</Label>
-                <Input 
-                  value={formData.contactName} 
-                  onChange={e => setFormData({...formData, contactName: e.target.value})} 
-                  placeholder="佐藤" 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>電話番号</Label>
-                <Input 
-                  value={formData.phone} 
-                  onChange={e => setFormData({...formData, phone: e.target.value})} 
-                  placeholder="03-0000-0000" 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>対応エリア</Label>
-                <Input 
-                  value={formData.serviceAreas} 
-                  onChange={e => setFormData({...formData, serviceAreas: e.target.value})} 
-                  placeholder="関東全域" 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>保有車両</Label>
-                <Input 
-                  value={formData.vehicleTypes} 
-                  onChange={e => setFormData({...formData, vehicleTypes: e.target.value})} 
-                  placeholder="2t, 4tウィング, 10t" 
-                />
-              </div>
+              {[
+                { label: '会社名', key: 'companyName', placeholder: '株式会社物流' },
+                { label: '担当者名', key: 'contactName', placeholder: '佐藤' },
+                { label: '電話番号', key: 'phone', placeholder: '03-0000-0000' },
+                { label: '対応エリア', key: 'serviceAreas', placeholder: '関東全域' },
+                { label: '保有車両', key: 'vehicleTypes', placeholder: '2t, 4tウィング, 10t' },
+              ].map(({ label, key, placeholder }) => (
+                <div key={key} className="space-y-2">
+                  <Label>{label}</Label>
+                  <Input
+                    value={(formData as any)[key]}
+                    onChange={e => setFormData({ ...formData, [key]: e.target.value })}
+                    placeholder={placeholder}
+                  />
+                </div>
+              ))}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddOpen(false)}>キャンセル</Button>
               <Button onClick={handleCreate} disabled={createCarrier.isPending || !formData.companyName}>
-                {createCarrier.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {createCarrier.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 登録する
               </Button>
             </DialogFooter>
@@ -104,48 +68,56 @@ export default function AdminCarriers() {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {isLoading ? (
-          <div className="col-span-full py-12 flex justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : carriers?.map((carrier) => (
-          <Card key={carrier.id} className="border-border shadow-sm">
-            <CardHeader className="pb-3 border-b border-border/50 bg-muted/10">
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-base font-bold">{carrier.companyName}</CardTitle>
-                {carrier.rating && (
-                  <div className="flex items-center text-sm font-medium text-amber-500">
-                    <Star className="h-3 w-3 fill-current mr-1" />
-                    {carrier.rating.toFixed(1)}
-                  </div>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="pt-4 space-y-3">
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <div className="text-muted-foreground">担当者</div>
-                <div className="col-span-2 font-medium">{carrier.contactName || '-'}</div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <div className="text-muted-foreground">電話</div>
-                <div className="col-span-2 font-medium">{carrier.phone || '-'}</div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <div className="text-muted-foreground">エリア</div>
-                <div className="col-span-2">{carrier.serviceAreas || '-'}</div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-sm">
-                <div className="text-muted-foreground">車両</div>
-                <div className="col-span-2 text-xs">{carrier.vehicleTypes || '-'}</div>
-              </div>
-              <div className="flex justify-between items-center pt-3 border-t border-border/50 mt-3 text-xs text-muted-foreground">
-                <span>総受託件数: {carrier.totalOrders}件</span>
-                {carrier.onTimeRate && <span>時間遵守率: {carrier.onTimeRate}%</span>}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="rounded-xl border border-border shadow-sm overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/40 border-b border-border">
+              <th className="px-5 py-3.5 text-left font-medium text-muted-foreground">会社名</th>
+              <th className="px-5 py-3.5 text-left font-medium text-muted-foreground">担当者</th>
+              <th className="px-5 py-3.5 text-left font-medium text-muted-foreground">電話</th>
+              <th className="px-5 py-3.5 text-left font-medium text-muted-foreground">エリア</th>
+              <th className="px-5 py-3.5 text-left font-medium text-muted-foreground">車両</th>
+              <th className="px-5 py-3.5 text-right font-medium text-muted-foreground">評価</th>
+              <th className="px-5 py-3.5 text-right font-medium text-muted-foreground">受託件数</th>
+              <th className="px-5 py-3.5 text-right font-medium text-muted-foreground">時間遵守率</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border bg-card">
+            {isLoading ? (
+              <tr>
+                <td colSpan={8} className="py-16 text-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
+                </td>
+              </tr>
+            ) : !carriers?.length ? (
+              <tr>
+                <td colSpan={8} className="py-16 text-center text-muted-foreground text-sm">
+                  運送会社が登録されていません
+                </td>
+              </tr>
+            ) : carriers.map((carrier) => (
+              <tr key={carrier.id} className="hover:bg-muted/20 transition-colors">
+                <td className="px-5 py-4 font-semibold">{carrier.companyName}</td>
+                <td className="px-5 py-4 text-muted-foreground">{carrier.contactName || '—'}</td>
+                <td className="px-5 py-4 text-muted-foreground">{carrier.phone || '—'}</td>
+                <td className="px-5 py-4">{carrier.serviceAreas || '—'}</td>
+                <td className="px-5 py-4 text-muted-foreground text-xs">{carrier.vehicleTypes || '—'}</td>
+                <td className="px-5 py-4 text-right">
+                  {carrier.rating ? (
+                    <span className="inline-flex items-center gap-1 text-amber-500 font-medium">
+                      <Star className="h-3.5 w-3.5 fill-current" />
+                      {carrier.rating.toFixed(1)}
+                    </span>
+                  ) : '—'}
+                </td>
+                <td className="px-5 py-4 text-right font-medium">{carrier.totalOrders ?? 0}件</td>
+                <td className="px-5 py-4 text-right text-muted-foreground">
+                  {carrier.onTimeRate ? `${carrier.onTimeRate}%` : '—'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
