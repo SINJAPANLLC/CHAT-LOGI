@@ -48,14 +48,6 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             </button>
           </Link>
         )}
-        {user?.role === 'admin' && (
-          <Link href="/admin" onClick={() => setMobileOpen(false)}>
-            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-              <LayoutDashboard className="h-4 w-4 shrink-0" />
-              管理者
-            </button>
-          </Link>
-        )}
       </nav>
 
       {/* Bottom section */}
@@ -74,6 +66,14 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                 設定
               </button>
             </Link>
+            {user?.role === 'admin' && (
+              <Link href="/admin" onClick={() => setMobileOpen(false)}>
+                <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                  <LayoutDashboard className="h-4 w-4 shrink-0" />
+                  管理者
+                </button>
+              </Link>
+            )}
             <div className="mx-1 my-2 border-t border-border" />
             <p className="px-3 py-1 text-xs text-muted-foreground truncate">{user.email}</p>
             <button
