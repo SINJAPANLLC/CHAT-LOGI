@@ -55,6 +55,9 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                 <Link href="/login">
                   <Button variant="ghost">ログイン</Button>
                 </Link>
+                <Link href="/register">
+                  <Button className="bg-black text-white hover:bg-black/90 rounded-full px-5">新規登録</Button>
+                </Link>
               </div>
             ) : null}
           </div>
