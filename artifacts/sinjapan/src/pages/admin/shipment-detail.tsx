@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ArrowLeft, Save, Pencil, Bot, User } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Pencil, Bot, User, FileText, Send, X } from 'lucide-react';
 import { Link } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 
@@ -27,7 +27,12 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function Section({ title, children, action }: { title: string; children: React.ReactNode; action?: React.ReactNode }) {
+interface SectionProps {
+  title: string;
+  children: React.ReactNode;
+  action?: React.ReactNode;
+}
+function Section({ title, children, action }: SectionProps) {
   return (
     <div className="bg-card border border-border rounded-xl shadow-sm">
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -58,6 +63,7 @@ export default function AdminShipmentDetail() {
 
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  const [showInstruction, setShowInstruction] = useState(false);
 
   React.useEffect(() => {
     if (shipment) {
@@ -105,6 +111,11 @@ export default function AdminShipmentDetail() {
     }
   };
 
+  const handleSendInstruction = () => {
+    setShowInstruction(false);
+    toast({ title: '指示書を送付しました', description: `案件 #${shipment.id} の指示書を送付しました。` });
+  };
+
   const statuses = [
     '受付中', 'ヒアリング中', '見積提示', '顧客承認',
     '手配中', '配車確定', '集荷完了', '配送中', '納品完了', '請求完了', 'キャンセル'
@@ -145,10 +156,18 @@ export default function AdminShipmentDetail() {
           {/* 配送情報 */}
           <Section title="配送情報">
             <Row label="集荷先" value={
-              <span>{shipment.pickupAddress}<br /><span className="text-xs text-muted-foreground font-normal">{shipment.pickupDatetime}</span></span>
+              <span>
+                {shipment.pickupAddress}
+                <br />
+                <span className="text-xs text-muted-foreground font-normal">{shipment.pickupDatetime}</span>
+              </span>
             } />
             <Row label="納品先" value={
-              <span>{shipment.deliveryAddress}<br /><span className="text-xs text-muted-foreground font-normal">{shipment.deliveryDeadline}</span></span>
+              <span>
+                {shipment.deliveryAddress}
+                <br />
+                <span className="text-xs text-muted-foreground font-normal">{shipment.deliveryDeadline}</span>
+              </span>
             } />
             <Row label="荷物" value={[shipment.cargoType, shipment.cargoQuantity].filter(Boolean).join(' / ')} />
             <Row label="重量・サイズ" value={[shipment.cargoWeight, shipment.cargoSize].filter(Boolean).join(' / ')} />
@@ -218,7 +237,7 @@ export default function AdminShipmentDetail() {
                 </div>
               </div>
             ) : (
-              <>
+              <div>
                 <Row label="運送会社" value={shipment.carrier?.companyName} />
                 <Row label="ドライバー名" value={shipment.assignedDriverName} />
                 <Row label="原価" value={shipment.carrierCost ? `¥ ${fmt(shipment.carrierCost)}` : undefined} />
@@ -228,9 +247,18 @@ export default function AdminShipmentDetail() {
                     {shipment.notes || 'メモなし'}
                   </p>
                 </div>
-              </>
+              </div>
             )}
           </Section>
+
+          {/* 指示書送付ボタン */}
+          <button
+            onClick={() => setShowInstruction(true)}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-4 text-sm font-medium text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+          >
+            <FileText className="h-4 w-4" />
+            指示書を送付する
+          </button>
         </div>
 
         {/* 右カラム */}
@@ -290,6 +318,63 @@ export default function AdminShipmentDetail() {
           </div>
         </div>
       </div>
+
+      {/* 指示書送付モーダル */}
+      {showInstruction && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowInstruction(false)} />
+          <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-lg z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div className="flex items-center gap-2 font-semibold">
+                <FileText className="h-4 w-4" />
+                指示書送付
+              </div>
+              <button onClick={() => setShowInstruction(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-muted-foreground">以下の内容で運送会社へ指示書を送付します。</p>
+              <div className="bg-muted/30 border border-border rounded-xl p-4 space-y-3 text-sm">
+                <div className="font-bold text-base border-b border-border pb-2">配送指示書 — 案件 #{shipment.id}</div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+                  <span className="text-muted-foreground">運送会社</span>
+                  <span className="font-medium">{shipment.carrier?.companyName || '未定'}</span>
+                  <span className="text-muted-foreground">ドライバー</span>
+                  <span className="font-medium">{shipment.assignedDriverName || '未定'}</span>
+                  <span className="text-muted-foreground">集荷先</span>
+                  <span className="font-medium">{shipment.pickupAddress || '—'}</span>
+                  <span className="text-muted-foreground">集荷日時</span>
+                  <span className="font-medium">{shipment.pickupDatetime || '—'}</span>
+                  <span className="text-muted-foreground">納品先</span>
+                  <span className="font-medium">{shipment.deliveryAddress || '—'}</span>
+                  <span className="text-muted-foreground">納品期限</span>
+                  <span className="font-medium">{shipment.deliveryDeadline || '—'}</span>
+                  <span className="text-muted-foreground">荷物</span>
+                  <span className="font-medium">{[shipment.cargoType, shipment.cargoQuantity].filter(Boolean).join(' / ') || '—'}</span>
+                  <span className="text-muted-foreground">車両</span>
+                  <span className="font-medium">{shipment.vehicleType || '—'}</span>
+                </div>
+                {shipment.notes && (
+                  <div className="pt-2 border-t border-border">
+                    <span className="text-muted-foreground text-xs">備考：</span>
+                    <p className="mt-1 whitespace-pre-wrap">{shipment.notes}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
+              <Button variant="outline" onClick={() => setShowInstruction(false)}>キャンセル</Button>
+              <Button className="gap-2" onClick={handleSendInstruction}>
+                <Send className="h-4 w-4" />
+                送付する
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
