@@ -31,6 +31,8 @@ import AdminCustomers from '@/pages/admin/customers';
 import AdminPricing from '@/pages/admin/pricing';
 import AdminCorporate from '@/pages/admin/corporate';
 import AdminInvoices from '@/pages/admin/invoices';
+import AdminFinance from '@/pages/admin/finance';
+import AdminNotifications from '@/pages/admin/notifications';
 
 // User Extra Pages
 import CorporateApply from '@/pages/corporate-apply';
@@ -70,6 +72,12 @@ function Router() {
       </Route>
       <Route path="/admin/invoices">
         <AdminLayout><AdminInvoices /></AdminLayout>
+      </Route>
+      <Route path="/admin/finance">
+        <AdminLayout><AdminFinance /></AdminLayout>
+      </Route>
+      <Route path="/admin/notifications">
+        <AdminLayout><AdminNotifications /></AdminLayout>
       </Route>
 
       {/* User */}

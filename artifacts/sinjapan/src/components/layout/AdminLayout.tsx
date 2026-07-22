@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { useGetMe, useLogout } from '@workspace/api-client-react';
-import { LayoutDashboard, Package, Truck, Users, CircleDollarSign, LogOut, Loader2, ArrowLeft, Building2, FileText } from 'lucide-react';
+import { LayoutDashboard, Package, Truck, Users, CircleDollarSign, LogOut, Loader2, ArrowLeft, FileText, BarChart3, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -38,10 +38,11 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { href: '/admin', label: 'ダッシュボード', icon: LayoutDashboard },
     { href: '/admin/shipments', label: '案件一覧', icon: Package },
     { href: '/admin/carriers', label: '運送会社管理', icon: Truck },
-    { href: '/admin/customers', label: '顧客管理', icon: Users },
+    { href: '/admin/customers', label: 'ユーザー管理', icon: Users },
+    { href: '/admin/invoices', label: '請求書払い申請', icon: FileText },
+    { href: '/admin/finance', label: 'PL / BS / CF', icon: BarChart3 },
     { href: '/admin/pricing', label: '料金設定', icon: CircleDollarSign },
-    { href: '/admin/corporate', label: '法人口座管理', icon: Building2 },
-    { href: '/admin/invoices', label: '請求書管理', icon: FileText },
+    { href: '/admin/notifications', label: '通知管理', icon: Bell },
   ];
 
   return (
