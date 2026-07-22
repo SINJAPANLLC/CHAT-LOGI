@@ -74,12 +74,6 @@ export default function History() {
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     </Link>
-                    <Link href="/" className="w-full">
-                      <Button variant="outline" className="w-full justify-center h-9 px-3 text-xs">
-                        <RefreshCw className="h-3 w-3 mr-1.5" />
-                        再依頼
-                      </Button>
-                    </Link>
                   </div>
                 </div>
               </CardContent>
