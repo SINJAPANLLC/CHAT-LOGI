@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useGetMe, useLogout } from '@workspace/api-client-react';
 import {
-  Plus, Clock, LayoutDashboard, LogOut, Settings, HelpCircle, Menu, X
+  Plus, Clock, LayoutDashboard, LogOut, Settings, Menu, X
 } from 'lucide-react';
 
 export function UserLayout({ children }: { children: React.ReactNode }) {
@@ -65,10 +65,6 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
               <Settings className="h-4 w-4 shrink-0" />
               設定
-            </button>
-            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-              <HelpCircle className="h-4 w-4 shrink-0" />
-              ヘルプ
             </button>
             <div className="mx-1 my-2 border-t border-border" />
             <p className="px-3 py-1 text-xs text-muted-foreground truncate">{user.email}</p>
