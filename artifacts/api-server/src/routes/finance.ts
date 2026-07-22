@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { db, shipmentsTable, paymentsTable, invoicesTable, usersTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { db, shipmentsTable, paymentsTable, invoicesTable, usersTable, carriersTable } from "@workspace/db";
+import { eq, sql, and } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 
 const router: IRouter = Router();
@@ -41,6 +41,44 @@ router.get("/admin/finance/pl", requireAdmin, async (req, res): Promise<void> =>
       confirmedShipments: Number(r.confirmedShipments ?? 0),
     };
   }));
+});
+
+// GET /admin/finance/pl/shipments?year=2026&month=07 — 月別案件明細
+router.get("/admin/finance/pl/shipments", requireAdmin, async (req, res): Promise<void> => {
+  const year  = Number(req.query.year  ?? new Date().getFullYear());
+  const month = String(req.query.month ?? '').padStart(2, '0');
+  const ym    = `${year}-${month}`;
+
+  const rows = await db.select({
+    id:              shipmentsTable.id,
+    pickupAddress:   shipmentsTable.pickupAddress,
+    deliveryAddress: shipmentsTable.deliveryAddress,
+    status:          shipmentsTable.status,
+    customerPrice:   shipmentsTable.customerPrice,
+    carrierCost:     shipmentsTable.carrierCost,
+    paymentMethod:   shipmentsTable.paymentMethod,
+    createdAt:       shipmentsTable.createdAt,
+    // 顧客
+    userName:        usersTable.name,
+    companyName:     usersTable.companyName,
+    // 運送会社
+    carrierName:     carriersTable.companyName,
+  }).from(shipmentsTable)
+    .leftJoin(usersTable,    eq(shipmentsTable.userId, usersTable.id))
+    .leftJoin(carriersTable, eq(shipmentsTable.assignedCarrierId, carriersTable.id))
+    .where(and(
+      sql`${shipmentsTable.status} = ANY(ARRAY[${sql.raw(confirmedSql)}]::shipment_status[])`,
+      sql`TO_CHAR(${shipmentsTable.createdAt}, 'YYYY-MM') = ${ym}`,
+    ))
+    .orderBy(sql`${shipmentsTable.createdAt} DESC`);
+
+  res.json(rows.map(r => ({
+    ...r,
+    customerPrice: Number(r.customerPrice ?? 0),
+    carrierCost:   Number(r.carrierCost ?? 0),
+    grossProfit:   Number(r.customerPrice ?? 0) - Number(r.carrierCost ?? 0),
+    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
+  })));
 });
 
 // GET /admin/finance/invoices — 消し込み用請求書一覧（draft/sent/overdue）

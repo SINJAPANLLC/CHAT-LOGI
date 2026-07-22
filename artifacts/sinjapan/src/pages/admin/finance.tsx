@@ -34,9 +34,71 @@ const PAY_STATUS: Record<string, { label: string; cls: string }> = {
 
 // ─── sub-components ───────────────────────────────────────────────────────────
 
+function DrillDown({ year, month, label, onClose }: { year: number; month: string; label: string; onClose: () => void }) {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    apiFetch(`/api/admin/finance/pl/shipments?year=${year}&month=${month}`)
+      .then(setRows).finally(() => setLoading(false));
+  }, [year, month]);
+
+  return (
+    <div className="mt-1 mb-2">
+      <div className="rounded-xl border border-border bg-muted/30 shadow-inner overflow-x-auto">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+          <span className="text-xs font-semibold text-muted-foreground">{label}の案件明細</span>
+          <button onClick={onClose} className="text-xs text-muted-foreground hover:text-foreground transition-colors">✕ 閉じる</button>
+        </div>
+        {loading ? (
+          <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+        ) : rows.length === 0 ? (
+          <p className="text-center text-xs text-muted-foreground py-6">確定済み案件はありません</p>
+        ) : (
+          <table className="w-full text-xs min-w-[680px]">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="px-4 py-2 text-left font-medium text-muted-foreground">案件#</th>
+                <th className="px-4 py-2 text-left font-medium text-muted-foreground">顧客</th>
+                <th className="px-4 py-2 text-left font-medium text-muted-foreground">運送会社</th>
+                <th className="px-4 py-2 text-left font-medium text-muted-foreground">区間</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">売上</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">原価</th>
+                <th className="px-4 py-2 text-right font-medium text-muted-foreground">粗利</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {rows.map((s: any) => (
+                <tr key={s.id} className="hover:bg-muted/20 transition-colors">
+                  <td className="px-4 py-2.5 text-muted-foreground font-mono">#{s.id}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="font-medium">{s.companyName || s.userName || '—'}</div>
+                    {s.companyName && <div className="text-muted-foreground">{s.userName}</div>}
+                  </td>
+                  <td className="px-4 py-2.5 font-medium">{s.carrierName || '未手配'}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground max-w-[160px] truncate">
+                    {s.pickupAddress && s.deliveryAddress ? `${s.pickupAddress} → ${s.deliveryAddress}` : '—'}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-semibold">{yen(s.customerPrice)}</td>
+                  <td className="px-4 py-2.5 text-right text-muted-foreground">{yen(s.carrierCost)}</td>
+                  <td className={`px-4 py-2.5 text-right font-semibold ${s.grossProfit < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                    {yen(s.grossProfit)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PLTable({ year, setYear }: { year: number; setYear: (y: number) => void }) {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
   const currentYear = new Date().getFullYear();
   const years = [currentYear - 1, currentYear, currentYear + 1];
 
@@ -46,7 +108,7 @@ function PLTable({ year, setYear }: { year: number; setYear: (y: number) => void
     finally { setLoading(false); }
   }, [year]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); setOpenMonth(null); }, [load]);
 
   // 12ヶ月分のデータを埋める
   const monthMap = Object.fromEntries(rows.map(r => [r.month, r]));
@@ -82,54 +144,82 @@ function PLTable({ year, setYear }: { year: number; setYear: (y: number) => void
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : (
-        <div className="rounded-xl border border-border shadow-sm overflow-x-auto">
-          <table className="w-full text-sm min-w-[700px]">
-            <thead>
-              <tr className="bg-muted/40 border-b border-border">
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">月</th>
-                <th className="px-5 py-3 text-right font-medium text-muted-foreground">売上</th>
-                <th className="px-5 py-3 text-right font-medium text-muted-foreground text-xs">うちカード</th>
-                <th className="px-5 py-3 text-right font-medium text-muted-foreground text-xs">うち請求書</th>
-                <th className="px-5 py-3 text-right font-medium text-muted-foreground">原価</th>
-                <th className="px-5 py-3 text-right font-medium text-muted-foreground">粗利</th>
-                <th className="px-5 py-3 text-right font-medium text-muted-foreground">利益率</th>
-                <th className="px-5 py-3 text-right font-medium text-muted-foreground">確定件数</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-card">
-              {grid.map((r, i) => {
-                const isEmpty = r.revenue === 0 && r.cost === 0;
-                return (
-                  <tr key={r.month} className={isEmpty ? 'opacity-40' : ''}>
-                    <td className="px-5 py-3 font-medium">{MONTHS[i]}</td>
-                    <td className="px-5 py-3 text-right font-semibold">{isEmpty ? '—' : yen(r.revenue)}</td>
-                    <td className="px-5 py-3 text-right text-xs text-muted-foreground">{isEmpty ? '—' : yen(r.cardRevenue)}</td>
-                    <td className="px-5 py-3 text-right text-xs text-muted-foreground">{isEmpty ? '—' : yen(r.invoiceRevenue)}</td>
-                    <td className="px-5 py-3 text-right text-muted-foreground">{isEmpty ? '—' : yen(r.cost)}</td>
-                    <td className={`px-5 py-3 text-right font-semibold ${r.grossProfit < 0 ? 'text-red-600' : ''}`}>
-                      {isEmpty ? '—' : yen(r.grossProfit)}
-                    </td>
-                    <td className="px-5 py-3 text-right text-muted-foreground">{isEmpty ? '—' : pct(r.profitRate)}</td>
-                    <td className="px-5 py-3 text-right text-muted-foreground">{isEmpty ? '—' : `${r.confirmedShipments}件`}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-            <tfoot>
-              <tr className="bg-foreground text-background">
-                <td className="px-5 py-3.5 font-bold">合計</td>
-                <td className="px-5 py-3.5 text-right font-bold">{yen(totals.revenue)}</td>
-                <td className="px-5 py-3.5 text-right text-sm opacity-75">{yen(totals.cardRevenue)}</td>
-                <td className="px-5 py-3.5 text-right text-sm opacity-75">{yen(totals.invoiceRevenue)}</td>
-                <td className="px-5 py-3.5 text-right opacity-75">{yen(totals.cost)}</td>
-                <td className="px-5 py-3.5 text-right font-bold">{yen(totals.grossProfit)}</td>
-                <td className="px-5 py-3.5 text-right opacity-75">
-                  {totals.revenue > 0 ? pct(Math.round(totals.grossProfit / totals.revenue * 1000) / 10) : '—'}
-                </td>
-                <td className="px-5 py-3.5 text-right opacity-75">{totals.confirmedShipments}件</td>
-              </tr>
-            </tfoot>
-          </table>
+        <div className="space-y-0">
+          <div className="rounded-xl border border-border shadow-sm overflow-x-auto">
+            <table className="w-full text-sm min-w-[700px]">
+              <thead>
+                <tr className="bg-muted/40 border-b border-border">
+                  <th className="px-5 py-3 text-left font-medium text-muted-foreground">月</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">売上</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground text-xs">うちカード</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground text-xs">うち請求書</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">原価</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">粗利</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">利益率</th>
+                  <th className="px-5 py-3 text-right font-medium text-muted-foreground">確定件数</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border bg-card">
+                {grid.map((r, i) => {
+                  const isEmpty = r.revenue === 0 && r.cost === 0;
+                  const monthKey = String(i + 1).padStart(2, '0');
+                  const isOpen = openMonth === r.month;
+                  return (
+                    <React.Fragment key={r.month}>
+                      <tr
+                        onClick={() => !isEmpty && setOpenMonth(isOpen ? null : r.month)}
+                        className={`transition-colors ${isEmpty ? 'opacity-40' : 'cursor-pointer hover:bg-muted/30'} ${isOpen ? 'bg-muted/20' : ''}`}
+                      >
+                        <td className="px-5 py-3 font-medium">
+                          <span className="flex items-center gap-1.5">
+                            {!isEmpty && (
+                              <span className={`text-xs text-muted-foreground transition-transform ${isOpen ? 'rotate-90' : ''} inline-block`}>▶</span>
+                            )}
+                            {MONTHS[i]}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-right font-semibold">{isEmpty ? '—' : yen(r.revenue)}</td>
+                        <td className="px-5 py-3 text-right text-xs text-muted-foreground">{isEmpty ? '—' : yen(r.cardRevenue)}</td>
+                        <td className="px-5 py-3 text-right text-xs text-muted-foreground">{isEmpty ? '—' : yen(r.invoiceRevenue)}</td>
+                        <td className="px-5 py-3 text-right text-muted-foreground">{isEmpty ? '—' : yen(r.cost)}</td>
+                        <td className={`px-5 py-3 text-right font-semibold ${r.grossProfit < 0 ? 'text-red-600' : ''}`}>
+                          {isEmpty ? '—' : yen(r.grossProfit)}
+                        </td>
+                        <td className="px-5 py-3 text-right text-muted-foreground">{isEmpty ? '—' : pct(r.profitRate)}</td>
+                        <td className="px-5 py-3 text-right text-muted-foreground">{isEmpty ? '—' : `${r.confirmedShipments}件`}</td>
+                      </tr>
+                      {isOpen && (
+                        <tr>
+                          <td colSpan={8} className="px-4 py-0">
+                            <DrillDown
+                              year={year}
+                              month={monthKey}
+                              label={`${year}年${MONTHS[i]}`}
+                              onClose={() => setOpenMonth(null)}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="bg-foreground text-background">
+                  <td className="px-5 py-3.5 font-bold">合計</td>
+                  <td className="px-5 py-3.5 text-right font-bold">{yen(totals.revenue)}</td>
+                  <td className="px-5 py-3.5 text-right text-sm opacity-75">{yen(totals.cardRevenue)}</td>
+                  <td className="px-5 py-3.5 text-right text-sm opacity-75">{yen(totals.invoiceRevenue)}</td>
+                  <td className="px-5 py-3.5 text-right opacity-75">{yen(totals.cost)}</td>
+                  <td className="px-5 py-3.5 text-right font-bold">{yen(totals.grossProfit)}</td>
+                  <td className="px-5 py-3.5 text-right opacity-75">
+                    {totals.revenue > 0 ? pct(Math.round(totals.grossProfit / totals.revenue * 1000) / 10) : '—'}
+                  </td>
+                  <td className="px-5 py-3.5 text-right opacity-75">{totals.confirmedShipments}件</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
         </div>
       )}
     </div>
