@@ -127,7 +127,7 @@ export default function Home() {
     <div className="flex-1 flex flex-col items-center justify-center px-4 pb-8 max-w-3xl mx-auto w-full">
 
       {/* Greeting */}
-      <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-10 tracking-tight">
+      <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-16 tracking-tight">
         今日は何を運びましょうか？
       </h1>
 
@@ -222,7 +222,7 @@ export default function Home() {
         </div>
 
         {/* Example chip */}
-        <div className="mt-5 flex flex-wrap gap-2 justify-center">
+        <div className="mt-10 flex flex-wrap gap-2 justify-center">
           {EXAMPLES.map((example, i) => (
             <button
               key={i}
