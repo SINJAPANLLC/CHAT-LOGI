@@ -5,9 +5,14 @@ import { Bell, LogOut, PackagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function UserLayout({ children }: { children: React.ReactNode }) {
+  // トークンがなければ未ログイン確定 → isLoading を待たない
+  const hasToken = !!localStorage.getItem('sinjapan_auth_token');
   const { data: user, isLoading } = useGetMe();
   const logout = useLogout();
   const [, setLocation] = useLocation();
+
+  // トークンなし → 即「未ログイン」、トークンあり → 認証結果を待つ
+  const resolving = hasToken && isLoading;
 
   const handleLogout = () => {
     localStorage.removeItem('sinjapan_auth_token');
@@ -25,7 +30,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           </Link>
 
           <div className="flex items-center gap-4">
-            {!isLoading && user ? (
+            {user ? (
               <>
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                   <Bell className="h-5 w-5" />
@@ -50,7 +55,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
                   </Button>
                 </div>
               </>
-            ) : !isLoading ? (
+            ) : !resolving ? (
               <div className="flex items-center gap-2">
                 <Link href="/login">
                   <Button variant="ghost">ログイン</Button>
