@@ -33,10 +33,14 @@ router.get("/dashboard/stats", requireAdmin, async (_req, res): Promise<void> =>
 
   const APPROVED_STATUSES = ["顧客承認", "受付完了", "手配中", "配車確定", "集荷完了", "配送中", "納品完了", "請求完了"];
   const totalApproved = allShipments.filter(s => APPROVED_STATUSES.includes(s.status)).length;
+  const todayConsultations = todayShipments.length;
+  const todayApproved = todayShipments.filter(s => APPROVED_STATUSES.includes(s.status)).length;
 
   res.json({
     totalConsultations: allShipments.length,
     totalApproved,
+    todayConsultations,
+    todayApproved,
     currentlyArranging: statusCounts["手配中"] || 0,
     totalRevenue: Math.round(totalRevenue),
     totalCost: Math.round(totalCost),
