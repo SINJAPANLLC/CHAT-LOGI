@@ -258,9 +258,28 @@ export default function AdminShipmentDetail() {
               </div>
             ) : (
               <div>
-                <Row label="運送会社" value={shipment.carrier?.companyName} />
+                <Row label="運送会社" value={(shipment as any).driverCarrierName || shipment.carrier?.companyName} />
                 <Row label="ドライバー名" value={shipment.assignedDriverName} />
+                {(shipment as any).driverPhone && (
+                  <Row label="ドライバー連絡先" value={
+                    <a href={`tel:${(shipment as any).driverPhone}`} className="hover:underline text-foreground">
+                      {(shipment as any).driverPhone}
+                    </a>
+                  } />
+                )}
+                {(shipment as any).driverVehicleNumber && (
+                  <Row label="車番" value={(shipment as any).driverVehicleNumber} />
+                )}
                 <Row label="原価" value={shipment.carrierCost ? `¥ ${fmt(shipment.carrierCost)}` : undefined} />
+                {driverPortalUrl && (
+                  <div className="px-4 py-3 flex items-start gap-3 border-b border-border/40 last:border-0">
+                    <span className="text-sm text-muted-foreground w-24 shrink-0">ドライバーURL</span>
+                    <a href={driverPortalUrl} target="_blank" rel="noreferrer"
+                      className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-2 break-all">
+                      {driverPortalUrl}
+                    </a>
+                  </div>
+                )}
                 <div className="pt-3">
                   <p className="text-xs text-muted-foreground mb-1.5">管理者メモ</p>
                   <p className="text-sm whitespace-pre-wrap text-muted-foreground bg-muted/30 rounded-lg p-3 min-h-[48px]">
