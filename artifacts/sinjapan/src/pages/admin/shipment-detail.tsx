@@ -138,11 +138,9 @@ export default function AdminShipmentDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start lg:items-stretch">
-        {/* 左カラム */}
-        <div className="lg:col-span-3 space-y-5">
-
-          {/* 配送情報 */}
+      {/* Row 1: 配送情報 + 収益 */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3">
           <Section title="配送情報">
             <Row label="集荷先" value={
               <span>{shipment.pickupAddress}<br /><span className="text-xs text-muted-foreground font-normal">{shipment.pickupDatetime}</span></span>
@@ -154,8 +152,36 @@ export default function AdminShipmentDetail() {
             <Row label="重量・サイズ" value={[shipment.cargoWeight, shipment.cargoSize].filter(Boolean).join(' / ')} />
             <Row label="車両・配送方法" value={[shipment.vehicleType, shipment.deliveryMethod].filter(Boolean).join(' / ')} />
           </Section>
+        </div>
+        <div className="lg:col-span-2">
+          <div className="bg-primary text-primary-foreground rounded-xl shadow-sm overflow-hidden h-full">
+            <div className="px-5 py-4 border-b border-primary-foreground/10">
+              <h2 className="font-semibold text-sm">収益</h2>
+            </div>
+            <div className="divide-y divide-primary-foreground/10">
+              <div className="flex justify-between items-center px-5 py-3">
+                <span className="text-sm text-primary-foreground/70">売上</span>
+                <span className="font-semibold">¥ {fmt(shipment.customerPrice)}</span>
+              </div>
+              <div className="flex justify-between items-center px-5 py-3">
+                <span className="text-sm text-primary-foreground/70">原価</span>
+                <span className="font-semibold">¥ {fmt(shipment.carrierCost)}</span>
+              </div>
+              <div className="flex justify-between items-center px-5 py-4">
+                <span className="text-sm font-bold">粗利</span>
+                <div className="text-right">
+                  <div className="text-xl font-bold">¥ {fmt(grossProfit)}</div>
+                  <div className="text-xs text-primary-foreground/60">{profitRate}%</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          {/* 手配内容 */}
+      {/* Row 2: 手配内容 + AIヒアリング履歴（同じ高さ） */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
+        <div className="lg:col-span-3">
           <Section
             title="手配内容"
             action={
@@ -233,34 +259,8 @@ export default function AdminShipmentDetail() {
           </Section>
         </div>
 
-        {/* 右カラム */}
-        <div className="lg:col-span-2 flex flex-col gap-5">
-
-          {/* 収益サマリー */}
-          <div className="bg-primary text-primary-foreground rounded-xl shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-primary-foreground/10">
-              <h2 className="font-semibold text-sm">収益</h2>
-            </div>
-            <div className="divide-y divide-primary-foreground/10">
-              <div className="flex justify-between items-center px-5 py-3">
-                <span className="text-sm text-primary-foreground/70">売上</span>
-                <span className="font-semibold">¥ {fmt(shipment.customerPrice)}</span>
-              </div>
-              <div className="flex justify-between items-center px-5 py-3">
-                <span className="text-sm text-primary-foreground/70">原価</span>
-                <span className="font-semibold">¥ {fmt(shipment.carrierCost)}</span>
-              </div>
-              <div className="flex justify-between items-center px-5 py-4">
-                <span className="text-sm font-bold">粗利</span>
-                <div className="text-right">
-                  <div className="text-xl font-bold">¥ {fmt(grossProfit)}</div>
-                  <div className="text-xs text-primary-foreground/60">{profitRate}%</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* AIヒアリング履歴 */}
+        {/* AIヒアリング履歴 */}
+        <div className="lg:col-span-2 flex flex-col">
           <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col flex-1 min-h-0">
             <div className="flex items-center gap-2 px-5 py-4 border-b border-border shrink-0">
               <Bot className="h-4 w-4 text-muted-foreground" />
