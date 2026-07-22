@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRoute } from 'wouter';
 import {
   useGetShipment, useUpdateShipment, useUpdateShipmentStatus,
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ArrowLeft, Save, Pencil, Bot, User, FileText, Send, X } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Pencil, Bot, User, FileText, Send, X, MapPin, Navigation } from 'lucide-react';
 import { Link } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 
@@ -302,6 +302,39 @@ export default function AdminShipmentDetail() {
 
         {/* 右カラム */}
         <div className="lg:col-span-2 space-y-5">
+
+          {/* GPS位置 */}
+          {(() => {
+            const s = shipment as any;
+            const lat = s.driverLat ? Number(s.driverLat) : null;
+            const lng = s.driverLng ? Number(s.driverLng) : null;
+            if (!lat || !lng) return null;
+            const updatedAt = s.driverLocationUpdatedAt ? new Date(s.driverLocationUpdatedAt) : null;
+            const minsAgo = updatedAt ? Math.round((Date.now() - updatedAt.getTime()) / 60000) : null;
+            const embedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.015},${lat-0.010},${lng+0.015},${lat+0.010}&layer=mapnik&marker=${lat},${lng}`;
+            const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+            return (
+              <div className="rounded-xl border border-border shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+                  <div className="flex items-center gap-2">
+                    <Navigation className="h-4 w-4 text-green-500" />
+                    <span className="font-semibold text-sm">ドライバー位置</span>
+                  </div>
+                  {minsAgo !== null && (
+                    <span className="text-xs text-muted-foreground">{minsAgo === 0 ? 'たった今' : `${minsAgo}分前`}</span>
+                  )}
+                </div>
+                <iframe src={embedUrl} className="w-full h-52 border-0" title="ドライバー位置" />
+                <div className="px-4 py-2.5 flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground font-mono">{lat.toFixed(5)}, {lng.toFixed(5)}</span>
+                  <a href={mapsUrl} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                    <MapPin className="h-3 w-3" />Googleマップ
+                  </a>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* 収益サマリー */}
           <div className="bg-primary text-primary-foreground rounded-xl shadow-sm overflow-hidden">
