@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useRoute, Link } from 'wouter';
-import { useGetShipment, getGetShipmentQueryKey } from '@workspace/api-client-react';
+import { useGetShipment, getGetShipmentQueryKey, useListConversations } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Circle, Loader2, CreditCard } from 'lucide-react';
+import { Check, Circle, Loader2, CreditCard, MessageSquare, X, Bot, User } from 'lucide-react';
 
 const STATUS_FLOW = [
   '受付完了',
@@ -18,6 +18,7 @@ const STATUS_FLOW = [
 export default function Shipment() {
   const [, params] = useRoute('/shipment/:id');
   const shipmentId = Number(params?.id);
+  const [showChat, setShowChat] = useState(false);
 
   const { data: shipment, isLoading } = useGetShipment(shipmentId, {
     query: {
@@ -52,6 +53,7 @@ export default function Shipment() {
   const needsPayment = shipment.status === '納品完了';
 
   return (
+    <>
     <div className="flex-1 p-4 md:p-8 flex justify-center items-start">
       <div className="w-full max-w-3xl space-y-8 animate-in fade-in duration-500">
         
@@ -111,8 +113,16 @@ export default function Shipment() {
           <div className="w-full md:w-2/3 space-y-4">
             <Card className="border-border shadow-sm">
               <CardHeader className="bg-muted/30 border-b border-border/50">
-                <CardTitle className="text-lg">案件詳細</CardTitle>
-                <p className="text-sm text-muted-foreground">ID: #{shipment.id.toString().padStart(6, '0')}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-lg">案件詳細</CardTitle>
+                    <p className="text-sm text-muted-foreground">ID: #{shipment.id.toString().padStart(6, '0')}</p>
+                  </div>
+                  <Button variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={() => setShowChat(true)}>
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    会話履歴
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y divide-border/50">
@@ -225,5 +235,63 @@ export default function Shipment() {
 
       </div>
     </div>
+
+    {/* 会話履歴パネル */}
+    {showChat && <ChatPanel shipmentId={shipmentId} onClose={() => setShowChat(false)} />}
+    </>
+  );
+}
+
+interface ChatPanelProps { shipmentId: number; onClose: () => void }
+function ChatPanel({ shipmentId, onClose }: ChatPanelProps) {
+  const { data: messages, isLoading } = useListConversations(shipmentId);
+
+  return (
+    <>
+      {/* オーバーレイ */}
+      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      {/* ドロワー */}
+      <div className="fixed top-0 right-0 h-full w-full max-w-md bg-background border-l border-border shadow-2xl z-50 flex flex-col animate-in slide-in-from-right duration-300">
+        {/* ヘッダー */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div className="flex items-center gap-2 font-semibold">
+            <MessageSquare className="h-4 w-4" />
+            会話履歴
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* メッセージ一覧 */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+          {isLoading && (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+          {!isLoading && (!messages || messages.length === 0) && (
+            <p className="text-center text-sm text-muted-foreground py-10">会話履歴がありません</p>
+          )}
+          {messages?.map(msg => {
+            const isUser = msg.sender === 'user';
+            return (
+              <div key={msg.id} className={`flex gap-2.5 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${isUser ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>
+                  {isUser ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+                </div>
+                <div className={`max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap leading-relaxed ${
+                  isUser
+                    ? 'bg-foreground text-background rounded-tr-sm'
+                    : 'bg-muted text-foreground rounded-tl-sm'
+                }`}>
+                  {msg.message}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
   );
 }
