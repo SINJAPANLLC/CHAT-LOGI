@@ -61,7 +61,7 @@ export default function CorporateApply() {
         <div className="flex items-center gap-3">
           <Building2 className="h-6 w-6" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">法人口座申請</h1>
+            <h1 className="text-2xl font-bold tracking-tight">請求書払い申請</h1>
             <p className="text-sm text-muted-foreground mt-0.5">審査通過後、請求書払い（掛け払い）が利用可能になります</p>
           </div>
         </div>
