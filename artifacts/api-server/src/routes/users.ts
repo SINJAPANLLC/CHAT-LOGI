@@ -31,4 +31,20 @@ router.get("/users/:id", requireAdmin, async (req, res): Promise<void> => {
   res.json(formatUser(user));
 });
 
+router.patch("/users/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const allowed = ['name', 'email', 'companyName', 'phone', 'role', 'billingAddress',
+    'creditStatus', 'creditLimit', 'paymentTerms', 'preferredPaymentMethod', 'isCompany', 'corporateNumber'];
+  const updates: Record<string, any> = {};
+  for (const key of allowed) {
+    if (req.body[key] !== undefined) updates[key] = req.body[key];
+  }
+
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, id)).returning();
+  if (!updated) { res.status(404).json({ error: "ユーザーが見つかりません" }); return; }
+  res.json(formatUser(updated));
+});
+
 export default router;
