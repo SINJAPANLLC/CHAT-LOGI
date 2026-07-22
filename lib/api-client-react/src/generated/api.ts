@@ -2380,6 +2380,36 @@ export function useGetUser<TData = Awaited<ReturnType<typeof getUser>>, TError =
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+// ── Update current user (name and/or password) ──────────────────────────────
+
+export type UpdateMeBody = {
+  name?: string;
+  currentPassword?: string;
+  newPassword?: string;
+};
+
+export const updateMe = async (body: UpdateMeBody, options?: RequestInit): Promise<User> => {
+  return customFetch<User>(`/api/auth/me`, {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(body),
+  });
+};
+
+export type UpdateMeMutationResult = NonNullable<Awaited<ReturnType<typeof updateMe>>>
+export type UpdateMeMutationError = ErrorType<unknown>
+
+export function useUpdateMe<TError = ErrorType<unknown>, TContext = unknown>(
+  options?: { mutation?: UseMutationOptions<Awaited<ReturnType<typeof updateMe>>, TError, { data: UpdateMeBody }, TContext>, request?: SecondParameter<typeof customFetch> }
+): UseMutationResult<Awaited<ReturnType<typeof updateMe>>, TError, { data: UpdateMeBody }, TContext> {
+  const { mutation: mutationOptions, request: requestOptions } = options ?? {};
+  return useMutation<Awaited<ReturnType<typeof updateMe>>, TError, { data: UpdateMeBody }, TContext>({
+    mutationFn: ({ data }) => updateMe(data, requestOptions),
+    ...mutationOptions,
+  });
+}
+
 
 
 

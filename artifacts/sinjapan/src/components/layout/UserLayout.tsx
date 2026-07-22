@@ -62,10 +62,12 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
       <div className="px-2 pb-4 space-y-0.5">
         {user ? (
           <>
-            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-              <Settings className="h-4 w-4 shrink-0" />
-              設定
-            </button>
+            <Link href="/settings" onClick={() => setMobileOpen(false)}>
+              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                <Settings className="h-4 w-4 shrink-0" />
+                設定
+              </button>
+            </Link>
             <div className="mx-1 my-2 border-t border-border" />
             <p className="px-3 py-1 text-xs text-muted-foreground truncate">{user.email}</p>
             <button

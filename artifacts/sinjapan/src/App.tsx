@@ -18,6 +18,7 @@ import Proposal from '@/pages/proposal';
 import Shipment from '@/pages/shipment';
 import Payment from '@/pages/payment';
 import History from '@/pages/history';
+import Settings from '@/pages/settings';
 import Login from '@/pages/login';
 import Register from '@/pages/register';
 
@@ -76,6 +77,9 @@ function Router() {
       </Route>
       <Route path="/history">
         <UserLayout><History /></UserLayout>
+      </Route>
+      <Route path="/settings">
+        <UserLayout><Settings /></UserLayout>
       </Route>
 
       <Route component={NotFound} />

@@ -94,4 +94,45 @@ router.get("/auth/me", requireAuth, async (req, res): Promise<void> => {
   res.json(formatUser(user));
 });
 
+router.patch("/auth/me", requireAuth, async (req, res): Promise<void> => {
+  const { name, currentPassword, newPassword } = req.body as {
+    name?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  };
+
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId)).limit(1);
+  if (!user) {
+    res.status(401).json({ error: "ユーザーが見つかりません" });
+    return;
+  }
+
+  const updates: Partial<typeof usersTable.$inferInsert> = {};
+
+  if (name !== undefined) {
+    updates.name = name;
+  }
+
+  if (newPassword) {
+    if (!currentPassword) {
+      res.status(400).json({ error: "現在のパスワードを入力してください" });
+      return;
+    }
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      res.status(400).json({ error: "現在のパスワードが正しくありません" });
+      return;
+    }
+    updates.passwordHash = await bcrypt.hash(newPassword, 10);
+  }
+
+  if (Object.keys(updates).length === 0) {
+    res.json(formatUser(user));
+    return;
+  }
+
+  const [updated] = await db.update(usersTable).set(updates).where(eq(usersTable.id, user.id)).returning();
+  res.json(formatUser(updated));
+});
+
 export default router;
