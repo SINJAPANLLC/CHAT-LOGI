@@ -3,9 +3,32 @@ import { Link } from 'wouter';
 import { useListShipments } from '@workspace/api-client-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Package, ChevronRight, Loader2, RefreshCw } from 'lucide-react';
+import { Package, ChevronRight, Loader2, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === '納品完了') {
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+        <CreditCard className="h-3 w-3" />
+        決済待ち
+      </span>
+    );
+  }
+  if (status === '請求完了') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">
+        支払い完了
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground border border-border">
+      {status}
+    </span>
+  );
+}
 
 export default function History() {
   const { data: shipments, isLoading } = useListShipments({});
@@ -44,9 +67,7 @@ export default function History() {
                       <p className="text-xs text-muted-foreground mb-1">
                         {format(new Date(shipment.createdAt), 'yyyy年MM月dd日', { locale: ja })}
                       </p>
-                      <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-muted text-foreground border border-border">
-                        {shipment.status}
-                      </div>
+                      <StatusBadge status={shipment.status} />
                     </div>
                     
                     <div className="md:col-span-2 space-y-2">
@@ -67,7 +88,15 @@ export default function History() {
                     </div>
                   </div>
 
-                  <div className="bg-muted/30 border-t md:border-t-0 md:border-l border-border p-4 flex gap-2 md:flex-col md:w-32 justify-center shrink-0">
+                  <div className="bg-muted/30 border-t md:border-t-0 md:border-l border-border p-4 flex gap-2 md:flex-col md:w-36 justify-center shrink-0">
+                    {shipment.status === '納品完了' && (
+                      <Link href={`/payment/${shipment.id}`} className="w-full">
+                        <Button className="w-full h-9 px-3 text-xs bg-orange-500 hover:bg-orange-600 text-white">
+                          <CreditCard className="h-3.5 w-3.5 mr-1.5" />
+                          決済へ進む
+                        </Button>
+                      </Link>
+                    )}
                     <Link href={`/shipment/${shipment.id}`} className="w-full">
                       <Button variant="ghost" className="w-full justify-between h-9 px-3">
                         詳細

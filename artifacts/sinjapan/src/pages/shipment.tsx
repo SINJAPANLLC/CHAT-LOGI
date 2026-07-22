@@ -3,7 +3,7 @@ import { useRoute, Link } from 'wouter';
 import { useGetShipment, getGetShipmentQueryKey } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Circle, Loader2, ArrowRight } from 'lucide-react';
+import { Check, Circle, Loader2, CreditCard } from 'lucide-react';
 
 const STATUS_FLOW = [
   '受付完了',
@@ -11,7 +11,8 @@ const STATUS_FLOW = [
   '配車確定',
   '集荷完了',
   '配送中',
-  '納品完了'
+  '納品完了',
+  '決済待ち',
 ];
 
 export default function Shipment() {
@@ -39,11 +40,16 @@ export default function Shipment() {
   
   // Map internal states to the visible flow
   if (shipment.status === '顧客承認') currentIndex = 0;
+  // 納品完了 → 決済待ちステップを現在地にする
+  if (shipment.status === '納品完了') currentIndex = STATUS_FLOW.indexOf('決済待ち');
   if (currentIndex === -1 && shipment.status !== 'キャンセル' && shipment.status !== '請求完了') {
     currentIndex = 0;
   }
+  // 請求完了はステッパー全完了扱い
+  if (shipment.status === '請求完了') currentIndex = STATUS_FLOW.length;
 
-  const isComplete = shipment.status === '納品完了' || shipment.status === '請求完了';
+  const isPaid = shipment.status === '請求完了';
+  const needsPayment = shipment.status === '納品完了';
 
   return (
     <div className="flex-1 p-4 md:p-8 flex justify-center items-start">
@@ -90,6 +96,7 @@ export default function Shipment() {
                           {status === '集荷完了' && '荷物をお預かりしました'}
                           {status === '配送中' && 'お届け先へ配送中です'}
                           {status === '納品完了' && '配送が完了しました'}
+                          {status === '決済待ち' && '決済をお願いします'}
                         </p>
                       )}
                     </div>
@@ -97,15 +104,26 @@ export default function Shipment() {
                 );
               })}
             </div>
-            
-            {isComplete && shipment.paymentStatus !== 'paid' && (
-              <div className="mt-10">
+
+            {needsPayment && (
+              <div className="mt-8 rounded-xl bg-orange-50 border border-orange-200 p-4 space-y-3">
+                <div className="flex items-center gap-2 text-orange-700 font-semibold text-sm">
+                  <CreditCard className="h-4 w-4" />
+                  決済をお願いします
+                </div>
+                <p className="text-xs text-orange-600">配送が完了しました。下記から決済を完了してください。</p>
                 <Link href={`/payment/${shipmentId}`}>
-                  <Button className="w-full h-12 text-md">
+                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
                     決済へ進む
-                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
+              </div>
+            )}
+
+            {isPaid && (
+              <div className="mt-8 rounded-xl bg-green-50 border border-green-200 p-4 flex items-center gap-2 text-green-700 text-sm font-semibold">
+                <Check className="h-4 w-4" />
+                支払い完了
               </div>
             )}
           </div>
