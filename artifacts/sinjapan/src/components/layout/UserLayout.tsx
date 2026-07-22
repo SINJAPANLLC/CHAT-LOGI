@@ -71,7 +71,6 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-border py-8 md:py-12 mt-auto">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} Chat LOGI. All rights reserved.</p>
-          <p className="mt-2 text-xs">物流は、考えなくていい。</p>
         </div>
       </footer>
     </div>
