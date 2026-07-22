@@ -25,6 +25,8 @@ export const usersTable = pgTable("users", {
   creditStatus: text("credit_status").default("none"), // none/pending/approved/rejected/suspended
   paymentTerms: text("payment_terms").default("Net30"),
   preferredPaymentMethod: text("preferred_payment_method").default("card"), // card/invoice
+  squareCustomerId: text("square_customer_id"),
+  squareCardId: text("square_card_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

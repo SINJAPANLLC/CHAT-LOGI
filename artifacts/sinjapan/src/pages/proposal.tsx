@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useGetShipment, useUpdateShipmentStatus, getGetShipmentQueryKey } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Truck, Calendar, Box, CheckCircle, ArrowLeft, MapPin, Package, Info } from 'lucide-react';
+import { customFetch } from '@workspace/api-client-react/custom-fetch';
+import { Truck, Calendar, Box, CheckCircle, ArrowLeft, MapPin, Package, Info, CreditCard, ShieldCheck, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+
+declare const Square: any;
 
 function Row({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
@@ -18,7 +22,6 @@ function Row({ icon, label, children }: { icon: React.ReactNode; label: string; 
 
 function formatDatetime(dt?: string | null) {
   if (!dt) return '未定';
-  // "2026-07-24 09:00" → "2026年7月24日 09:00"
   return dt.replace(/^(\d{4})-(\d{2})-(\d{2})\s?/, (_, y, m, d) => `${y}年${Number(m)}月${Number(d)}日 `).trimEnd();
 }
 
@@ -27,6 +30,7 @@ export default function Proposal() {
   const shipmentId = Number(params?.id);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   const { data: shipment, isLoading } = useGetShipment(shipmentId, {
     query: { enabled: !!shipmentId, queryKey: getGetShipmentQueryKey(shipmentId) }
@@ -34,10 +38,100 @@ export default function Proposal() {
 
   const updateStatus = useUpdateShipmentStatus();
 
-  const handleApprove = async () => {
+  // Card registration state
+  const [step, setStep] = useState<'proposal' | 'card'>('proposal');
+  const [cardReady, setCardReady] = useState(false);
+  const [cardError, setCardError] = useState<string | null>(null);
+  const [registering, setRegistering] = useState(false);
+  const cardRef = useRef<any>(null);
+  const cardContainerRef = useRef<HTMLDivElement>(null);
+
+  // Check if user already has a card on file
+  const [hasCard, setHasCard] = useState<boolean | null>(null);
+  useEffect(() => {
+    customFetch<any>('/api/auth/me').then(u => {
+      setHasCard(!!u.squareCardId);
+    }).catch(() => setHasCard(false));
+  }, []);
+
+  // Initialize Square when entering card step
+  useEffect(() => {
+    if (step !== 'card') return;
+    let card: any = null;
+    let destroyed = false;
+
+    const init = async () => {
+      try {
+        const config = await customFetch<any>('/api/config/payment');
+        if (!config.squareApplicationId) { setCardError('Square設定が不足しています'); return; }
+        const payments = Square.payments(config.squareApplicationId, config.squareLocationId);
+        card = await payments.card({
+          style: {
+            input: { fontSize: '14px' },
+            '.input-container': { borderColor: '#e2e8f0', borderRadius: '8px' },
+            '.input-container.is-focus': { borderColor: '#1a202c' },
+          },
+        });
+        if (destroyed) return;
+        if (cardContainerRef.current) await card.attach(cardContainerRef.current);
+        cardRef.current = card;
+        setCardReady(true);
+      } catch (e: any) {
+        if (!destroyed) setCardError(`初期化エラー: ${e.message}`);
+      }
+    };
+
+    if (typeof Square !== 'undefined') {
+      init();
+    } else {
+      const script = document.createElement('script');
+      script.src = 'https://web.squarecdn.com/v1/square.js';
+      script.onload = init;
+      script.onerror = () => { if (!destroyed) setCardError('Square.js の読み込みに失敗しました'); };
+      document.head.appendChild(script);
+    }
+
+    return () => {
+      destroyed = true;
+      card?.destroy?.();
+      cardRef.current = null;
+      setCardReady(false);
+    };
+  }, [step]);
+
+  const handleApproveClick = () => {
+    if (hasCard) {
+      // すでにカード登録済み → 直接承認
+      doApprove();
+    } else {
+      // カード未登録 → カード登録ステップへ
+      setStep('card');
+    }
+  };
+
+  const doApprove = async () => {
     await updateStatus.mutateAsync({ id: shipmentId, data: { status: '顧客承認' } });
     queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
     setLocation(`/shipment/${shipmentId}`);
+  };
+
+  const handleCardRegister = async () => {
+    if (!cardRef.current) return;
+    setRegistering(true); setCardError(null);
+    try {
+      const result = await cardRef.current.tokenize();
+      if (result.status !== 'OK') throw new Error(result.errors?.[0]?.message ?? 'カードの読み取りに失敗しました');
+      await customFetch('/api/square/register-card', {
+        method: 'POST',
+        body: JSON.stringify({ sourceId: result.token }),
+      });
+      toast({ title: 'カードを登録しました' });
+      await doApprove();
+    } catch (e: any) {
+      setCardError(e.message);
+    } finally {
+      setRegistering(false);
+    }
   };
 
   const handleModify = () => {
@@ -62,7 +156,6 @@ export default function Proposal() {
     ? new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(price)
     : '未定';
 
-  // Vehicle display
   const s = shipment as any;
   const vehicleLabel = [s.vehicleSize, s.vehicleBodyType].filter(Boolean).join(' ') || shipment.vehicleType || '未定';
   const truckCount = s.truckCount ?? 1;
@@ -70,6 +163,71 @@ export default function Proposal() {
   const additionalWork = s.additionalWork;
   const highwayUse = s.highwayUse;
 
+  // ── カード登録ステップ ──
+  if (step === 'card') {
+    return (
+      <div className="flex-1 p-4 md:p-8 flex justify-center items-start">
+        <div className="w-full max-w-xl space-y-6 animate-in fade-in duration-300">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">お支払いカードの登録</h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              配車確定時に与信確認（オーソリ）を行います。実際のお引き落としは納品完了後です。
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
+            <div className="px-5 py-4 bg-muted/30 border-b border-border/50 text-sm font-semibold flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4" />
+              カード情報
+            </div>
+            <div className="p-5 space-y-4">
+              <div ref={cardContainerRef} id="card-container-proposal" className="min-h-[100px]" />
+              {!cardReady && !cardError && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />フォームを読み込み中…
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <ShieldCheck className="h-3 w-3" />
+                カード情報はSquareが直接処理します。当社サーバーには保存されません。
+              </p>
+            </div>
+          </div>
+
+          {/* 請求予定 */}
+          <div className="rounded-xl bg-muted/30 border border-border px-4 py-3 text-sm space-y-1">
+            <div className="flex justify-between text-muted-foreground">
+              <span>配送費（税込）</span>
+              <span>{price ? new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(Math.round(price * 1.1)) : '未定'}</span>
+            </div>
+            <p className="text-xs text-muted-foreground pt-1">※ 配車確定時に与信確認のみ行います。お引き落としは納品完了後です。</p>
+          </div>
+
+          {cardError && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{cardError}</div>
+          )}
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep('proposal')}
+              className="px-6 py-2.5 rounded-full border border-border text-sm font-medium hover:bg-muted transition-colors"
+            >
+              戻る
+            </button>
+            <button
+              onClick={handleCardRegister}
+              disabled={registering || !cardReady}
+              className="flex-1 py-2.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {registering ? <><Loader2 className="h-4 w-4 animate-spin" />処理中…</> : 'カードを登録して依頼する'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── 提案確認ステップ ──
   return (
     <div className="flex-1 p-4 md:p-8 flex justify-center items-start">
       <div className="w-full max-w-2xl">
@@ -96,7 +254,6 @@ export default function Proposal() {
           </div>
 
           <div>
-            {/* ルート */}
             <Row icon={<MapPin className="h-4 w-4 shrink-0" />} label="ルート">
               <div className="space-y-3">
                 <div>
@@ -112,7 +269,6 @@ export default function Proposal() {
               </div>
             </Row>
 
-            {/* 荷物 */}
             <Row icon={<Package className="h-4 w-4 shrink-0" />} label="荷物">
               <div className="space-y-0.5">
                 {shipment.cargoType && <p className="font-medium">{shipment.cargoType}</p>}
@@ -124,7 +280,6 @@ export default function Proposal() {
               </div>
             </Row>
 
-            {/* 車両・配送 */}
             <Row icon={<Truck className="h-4 w-4 shrink-0" />} label="車両・配送">
               <div className="space-y-0.5">
                 <p className="font-medium">
@@ -140,13 +295,26 @@ export default function Proposal() {
               </div>
             </Row>
 
-            {/* 備考 */}
             {shipment.notes && (
               <Row icon={<Info className="h-4 w-4 shrink-0" />} label="備考">
                 <p className="text-muted-foreground whitespace-pre-wrap">{shipment.notes}</p>
               </Row>
             )}
           </div>
+
+          {/* カード登録案内 */}
+          {hasCard === false && (
+            <div className="px-6 py-3 bg-blue-50 border-t border-blue-100 flex items-center gap-2 text-xs text-blue-700">
+              <CreditCard className="h-3.5 w-3.5 shrink-0" />
+              依頼確定後にお支払いカードの登録が必要です（配車確定時にオーソリ、納品後に引き落とし）
+            </div>
+          )}
+          {hasCard === true && (
+            <div className="px-6 py-3 bg-muted/30 border-t border-border flex items-center gap-2 text-xs text-muted-foreground">
+              <CreditCard className="h-3.5 w-3.5 shrink-0" />
+              登録済みカードで決済されます（配車確定時にオーソリ、納品後に引き落とし）
+            </div>
+          )}
 
           {/* Buttons */}
           <div className="px-6 py-5 border-t border-border flex flex-col sm:flex-row gap-3 bg-muted/10">
@@ -159,11 +327,11 @@ export default function Proposal() {
               条件を変更する
             </button>
             <button
-              onClick={handleApprove}
-              disabled={updateStatus.isPending}
-              className="flex-1 py-2.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+              onClick={handleApproveClick}
+              disabled={updateStatus.isPending || hasCard === null}
+              className="flex-1 py-2.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {updateStatus.isPending ? '処理中…' : 'この内容で依頼する'}
+              {updateStatus.isPending ? <><Loader2 className="h-4 w-4 animate-spin" />処理中…</> : hasCard ? 'この内容で依頼する' : 'この内容で依頼する（カード登録へ）'}
             </button>
           </div>
         </div>

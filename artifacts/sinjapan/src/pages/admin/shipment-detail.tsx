@@ -363,6 +363,82 @@ export default function AdminShipmentDetail() {
             </div>
           </div>
 
+          {/* 決済ステータス */}
+          {(() => {
+            const s = shipment as any;
+            const paymentId = s.squarePaymentId;
+            const captured = s.squareCaptured;
+            if (!paymentId && shipment.status !== '納品完了') return null;
+            return (
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-border">
+                  <h2 className="font-semibold text-sm">決済</h2>
+                </div>
+                <div className="px-5 py-4 space-y-3">
+                  {paymentId ? (
+                    <>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">ステータス</span>
+                        <span className={`font-semibold ${captured === 'true' ? 'text-green-600' : 'text-amber-600'}`}>
+                          {captured === 'true' ? '決済完了' : 'オーソリ済み（未キャプチャ）'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">Square Payment ID</span>
+                        <span className="font-mono text-xs text-muted-foreground truncate max-w-[140px]">{paymentId}</span>
+                      </div>
+                      {captured !== 'true' && shipment.status === '納品完了' && (
+                        <Button
+                          className="w-full mt-2"
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem('sinjapan_auth_token');
+                              const res = await fetch(`/api/square/capture/${paymentId}`, {
+                                method: 'POST',
+                                headers: { Authorization: `Bearer ${token}` },
+                              });
+                              if (!res.ok) throw new Error();
+                              queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
+                              toast({ title: 'キャプチャ完了・請求完了に更新しました' });
+                            } catch {
+                              toast({ variant: 'destructive', title: 'キャプチャに失敗しました' });
+                            }
+                          }}
+                        >
+                          キャプチャ（決済確定）
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">カード未登録またはオーソリ未実行</p>
+                      <Button variant="outline" size="sm" className="w-full text-xs"
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('sinjapan_auth_token');
+                            const res = await fetch(`/api/square/authorize-on-file/${shipmentId}`, {
+                              method: 'POST',
+                              headers: { Authorization: `Bearer ${token}` },
+                            });
+                            if (!res.ok) {
+                              const d = await res.json();
+                              throw new Error(d.error ?? '失敗');
+                            }
+                            queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
+                            toast({ title: 'オーソリを実行しました' });
+                          } catch (e: any) {
+                            toast({ variant: 'destructive', title: `オーソリ失敗: ${e.message}` });
+                          }
+                        }}>
+                        手動でオーソリを実行
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* AIヒアリング履歴 */}
           <div className="bg-card border border-border rounded-xl shadow-sm">
             <div className="flex items-center gap-2 px-5 py-4 border-b border-border">

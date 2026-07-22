@@ -11,6 +11,7 @@ import {
   UpdateShipmentStatusParams,
 } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
+import { authorizeOnFile } from "../lib/square-authorize";
 
 const router: IRouter = Router();
 
@@ -184,6 +185,11 @@ router.patch("/shipments/:id/status", requireAuth, async (req, res): Promise<voi
     .returning();
 
   if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+
+  // 配車確定になったら登録済みカードで自動オーソリ
+  if (parsed.data.status === '配車確定' && !shipment.squarePaymentId) {
+    authorizeOnFile(id).catch(() => {}); // 非同期・失敗しても案件更新は成功扱い
+  }
 
   res.json(formatShipment(shipment));
 });

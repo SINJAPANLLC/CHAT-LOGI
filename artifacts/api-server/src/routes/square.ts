@@ -1,24 +1,78 @@
 import { Router, type IRouter } from "express";
-import { db, shipmentsTable } from "@workspace/db";
+import { db, shipmentsTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { randomUUID } from "crypto";
+import { squareFetch, authorizeOnFile } from "../lib/square-authorize";
 
 const router: IRouter = Router();
 
-const SQUARE_BASE = "https://connect.squareup.com";
+// POST /square/register-card — 依頼承認時にカードを顧客として登録（Card on File）
+router.post("/square/register-card", requireAuth, async (req, res): Promise<void> => {
+  const { sourceId } = req.body;
+  if (!sourceId) { res.status(400).json({ error: "sourceId は必須です" }); return; }
 
-function squareFetch(path: string, method: string, body?: object) {
-  return fetch(`${SQUARE_BASE}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${process.env.SQUARE_ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-      "Square-Version": "2024-11-20",
+  const [user] = await db.select().from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1);
+  if (!user) { res.status(404).json({ error: "ユーザーが見つかりません" }); return; }
+
+  // すでにSquare顧客が存在する場合は新しいカードを追加
+  let customerId = user.squareCustomerId;
+
+  if (!customerId) {
+    // Square Customerを新規作成
+    const custRes = await squareFetch("/v2/customers", "POST", {
+      idempotency_key: randomUUID(),
+      email_address: user.email,
+      given_name: user.name,
+      company_name: user.companyName ?? undefined,
+      phone_number: user.phone ?? undefined,
+      reference_id: String(user.id),
+    });
+    const custData = await custRes.json() as any;
+    if (!custRes.ok) {
+      res.status(502).json({ error: "Square顧客作成失敗", detail: custData.errors });
+      return;
+    }
+    customerId = custData.customer.id;
+  }
+
+  // Card on File を作成
+  const cardRes = await squareFetch("/v2/cards", "POST", {
+    idempotency_key: randomUUID(),
+    source_id: sourceId,
+    card: {
+      customer_id: customerId,
+      cardholder_name: user.name,
     },
-    body: body ? JSON.stringify(body) : undefined,
   });
-}
+  const cardData = await cardRes.json() as any;
+  if (!cardRes.ok) {
+    res.status(502).json({ error: "Squareカード登録失敗", detail: cardData.errors });
+    return;
+  }
+
+  const card = cardData.card;
+  // ユーザーにSquare顧客IDとカードIDを保存
+  await db.update(usersTable).set({
+    squareCustomerId: customerId,
+    squareCardId: card.id,
+    cardBrand: card.card_brand ?? null,
+    cardLast4: card.last_4 ?? null,
+    cardExpiry: card.exp_month && card.exp_year ? `${card.exp_month}/${card.exp_year}` : null,
+  }).where(eq(usersTable.id, user.id));
+
+  res.json({ customerId, cardId: card.id, brand: card.card_brand, last4: card.last_4 });
+});
+
+// POST /square/authorize-on-file/:shipmentId — 配車確定時に登録済みカードでオーソリ
+router.post("/square/authorize-on-file/:shipmentId", requireAdmin, async (req, res): Promise<void> => {
+  const shipmentId = Number(req.params.shipmentId);
+  if (isNaN(shipmentId)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const result = await authorizeOnFile(shipmentId);
+  if ("error" in result) { res.status(400).json(result); return; }
+  res.json(result);
+});
 
 // POST /square/authorize
 // フロントエンドからsourceId（カードトークン）を受け取り、Squareで与信確保（オーソリ）
