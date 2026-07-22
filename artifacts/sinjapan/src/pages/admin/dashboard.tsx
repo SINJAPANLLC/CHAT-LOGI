@@ -17,7 +17,7 @@ export default function Dashboard() {
   }
 
   const formatPrice = (val: number) => new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY', maximumFractionDigits: 0 }).format(val);
-  const formatPercent = (val: number) => `${(val * 100).toFixed(1)}%`;
+  const formatPercent = (val: number) => `${val.toFixed(1)}%`;
 
   return (
     <div className="space-y-6">
