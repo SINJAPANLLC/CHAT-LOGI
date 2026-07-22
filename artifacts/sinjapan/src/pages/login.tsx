@@ -94,19 +94,19 @@ export default function Login() {
                 )}
               />
 
-              <Button type="submit" className="w-full" disabled={login.isPending}>
-                {login.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                ログイン
-              </Button>
+              <div className="flex gap-3">
+                <Button type="submit" className="flex-1 bg-black text-white hover:bg-black/90" disabled={login.isPending}>
+                  {login.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  ログイン
+                </Button>
+                <Link href="/register" className="flex-1">
+                  <Button type="button" variant="outline" className="w-full bg-white text-black border-black hover:bg-gray-50">
+                    新規登録
+                  </Button>
+                </Link>
+              </div>
             </form>
           </Form>
-        </div>
-
-        <div className="text-center text-sm text-muted-foreground">
-          アカウントをお持ちでないですか？{' '}
-          <Link href="/register" className="font-medium text-primary hover:underline">
-            新規登録
-          </Link>
         </div>
       </div>
     </div>
