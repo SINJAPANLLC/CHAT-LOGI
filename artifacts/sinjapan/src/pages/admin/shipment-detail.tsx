@@ -64,6 +64,8 @@ export default function AdminShipmentDetail() {
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [showInstruction, setShowInstruction] = useState(false);
+  const [driverToken, setDriverToken] = useState<string | null>(null);
+  const [generatingToken, setGeneratingToken] = useState(false);
 
   React.useEffect(() => {
     if (shipment) {
@@ -111,10 +113,29 @@ export default function AdminShipmentDetail() {
     }
   };
 
+  const openInstruction = async () => {
+    setShowInstruction(true);
+    if (driverToken) return;
+    setGeneratingToken(true);
+    try {
+      const token = localStorage.getItem('sinjapan_auth_token');
+      const res = await fetch(`/api/driver/generate/${shipmentId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setDriverToken(data.token);
+    } finally { setGeneratingToken(false); }
+  };
+
   const handleSendInstruction = () => {
     setShowInstruction(false);
     toast({ title: '指示書を送付しました', description: `案件 #${shipment.id} の指示書を送付しました。` });
   };
+
+  const driverPortalUrl = driverToken
+    ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/driver/${driverToken}`
+    : null;
 
   const statuses = [
     '受付中', 'ヒアリング中', '見積提示', '顧客承認',
@@ -252,7 +273,7 @@ export default function AdminShipmentDetail() {
 
           {/* 指示書送付ボタン */}
           <button
-            onClick={() => setShowInstruction(true)}
+            onClick={openInstruction}
             className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground text-background py-4 text-sm font-medium hover:opacity-80 transition-opacity"
           >
             <FileText className="h-4 w-4" />
@@ -335,6 +356,39 @@ export default function AdminShipmentDetail() {
 
             <div className="px-6 py-5 space-y-4">
               <p className="text-sm text-muted-foreground">以下の内容で運送会社へ指示書を送付します。</p>
+
+              {/* ドライバーポータルリンク */}
+              <div className="bg-foreground text-background rounded-xl p-4 space-y-2">
+                <p className="text-xs font-semibold opacity-70">ドライバーポータルURL</p>
+                {generatingToken ? (
+                  <div className="flex items-center gap-2 text-sm opacity-70">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />生成中...
+                  </div>
+                ) : driverPortalUrl ? (
+                  <>
+                    <p className="text-xs break-all font-mono opacity-80">{driverPortalUrl}</p>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(driverPortalUrl); toast({ title: 'URLをコピーしました' }); }}
+                        className="flex-1 py-1.5 text-xs rounded-lg bg-background/20 hover:bg-background/30 transition-colors font-medium"
+                      >
+                        URLをコピー
+                      </button>
+                      <a
+                        href={driverPortalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 py-1.5 text-xs rounded-lg bg-background/20 hover:bg-background/30 transition-colors font-medium text-center"
+                      >
+                        プレビュー
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs opacity-60">URL生成に失敗しました</p>
+                )}
+              </div>
+
               <div className="bg-muted/30 border border-border rounded-xl p-4 space-y-3 text-sm">
                 <div className="font-bold text-base border-b border-border pb-2">配送指示書 — 案件 #{shipment.id}</div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">

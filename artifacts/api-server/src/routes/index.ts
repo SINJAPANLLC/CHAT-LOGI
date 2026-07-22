@@ -14,6 +14,7 @@ import corporateRouter from "./corporate";
 import invoicesRouter from "./invoices";
 import configRouter from "./config";
 import financeRouter from "./finance";
+import driverRouter from "./driver";
 
 const router: IRouter = Router();
 
@@ -32,5 +33,6 @@ router.use(corporateRouter);
 router.use(invoicesRouter);
 router.use(configRouter);
 router.use(financeRouter);
+router.use(driverRouter);
 
 export default router;

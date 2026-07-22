@@ -202,6 +202,41 @@ export default function Shipment() {
               </CardContent>
             </Card>
 
+            {/* GPS位置カード */}
+            {currentIndex >= STATUS_FLOW.indexOf('集荷完了') && (() => {
+              const s = shipment as any;
+              const lat = s.driverLat ? Number(s.driverLat) : null;
+              const lng = s.driverLng ? Number(s.driverLng) : null;
+              if (!lat || !lng) return null;
+              const updatedAt = s.driverLocationUpdatedAt ? new Date(s.driverLocationUpdatedAt) : null;
+              const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+              const embedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.015},${lat-0.010},${lng+0.015},${lat+0.010}&layer=mapnik&marker=${lat},${lng}`;
+              return (
+                <Card className="border-border shadow-sm overflow-hidden">
+                  <div className="flex items-center justify-between px-5 py-3.5 bg-foreground text-background">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <span className="font-semibold text-sm">ドライバー位置</span>
+                    </div>
+                    {updatedAt && (
+                      <span className="text-xs opacity-60">{Math.round((Date.now() - updatedAt.getTime()) / 60000)}分前</span>
+                    )}
+                  </div>
+                  <iframe
+                    src={embedUrl}
+                    className="w-full h-52 border-0"
+                    title="ドライバー位置"
+                  />
+                  <CardContent className="p-3">
+                    <a href={mapsUrl} target="_blank" rel="noreferrer"
+                      className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                      <MapPin className="h-3.5 w-3.5" />Googleマップで開く
+                    </a>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+
             {/* ドライバー情報カード — 配車確定以降に表示 */}
             {currentIndex >= STATUS_FLOW.indexOf('配車確定') && (
               (() => {

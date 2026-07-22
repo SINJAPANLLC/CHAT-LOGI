@@ -63,6 +63,11 @@ export const shipmentsTable = pgTable("shipments", {
     () => carriersTable.id
   ),
   assignedDriverName: text("assigned_driver_name"),
+  driverToken: text("driver_token").unique(),
+  driverPhone: text("driver_phone"),
+  driverLat: numeric("driver_lat"),
+  driverLng: numeric("driver_lng"),
+  driverLocationUpdatedAt: timestamp("driver_location_updated_at"),
   paymentStatus: paymentStatusEnum("payment_status"),
   squarePaymentId: text("square_payment_id"),
   squareCaptured: text("square_captured").default("false"),
