@@ -57,8 +57,8 @@ export default function Register() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-muted/10">
       <div className="w-full max-w-md space-y-8 my-8">
         <div className="text-center">
-          <Link href="/" className="inline-block text-2xl font-bold tracking-tight mb-2">
-            SINJAPAN
+          <Link href="/" className="inline-flex justify-center mb-2">
+            <img src="/logo.jpg" alt="Chat LOGI" className="h-8 w-auto" />
           </Link>
           <h1 className="text-xl font-medium tracking-tight">新規アカウント登録</h1>
         </div>

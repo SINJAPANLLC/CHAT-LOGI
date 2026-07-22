@@ -73,7 +73,7 @@ export default function Proposal() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-medium flex items-center gap-2">
                 <CheckCircle className="h-5 w-5 text-primary" />
-                SINJAPAN 推奨プラン
+                Chat LOGI 推奨プラン
               </CardTitle>
               <div className="text-2xl font-bold tracking-tight">
                 {formatPrice(shipment.customerPrice)}

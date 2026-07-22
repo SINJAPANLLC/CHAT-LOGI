@@ -107,7 +107,7 @@ export default function Chat() {
               <span className="h-1.5 w-1.5 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
               <span className="h-1.5 w-1.5 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
               <span className="h-1.5 w-1.5 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
-              <span className="ml-2 text-sm text-muted-foreground">SINJAPANが考慮中...</span>
+              <span className="ml-2 text-sm text-muted-foreground">Chat LOGIが考慮中...</span>
             </div>
           </div>
         )}
@@ -134,7 +134,7 @@ export default function Chat() {
         </div>
         <div className="text-center mt-2">
           <span className="text-xs text-muted-foreground">
-            SINJAPAN AIが最適な配送プランをご提案します。
+            Chat LOGIが最適な配送プランをご提案します。
           </span>
         </div>
       </div>

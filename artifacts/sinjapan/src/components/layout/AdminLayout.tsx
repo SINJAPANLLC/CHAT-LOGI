@@ -46,8 +46,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-[100dvh] flex bg-sidebar text-foreground font-sans">
       <aside className="w-64 border-r border-border bg-card flex flex-col hidden md:flex sticky top-0 h-[100dvh]">
         <div className="h-16 flex items-center px-6 border-b border-border/50">
-          <Link href="/admin" className="font-bold tracking-tight text-xl">
-            SINJAPAN <span className="text-xs font-normal text-muted-foreground ml-2">管理者</span>
+          <Link href="/admin" className="flex items-center gap-2">
+            <img src="/logo.jpg" alt="Chat LOGI" className="h-6 w-auto" />
+            <span className="text-xs font-normal text-muted-foreground">管理者</span>
           </Link>
         </div>
 
@@ -84,8 +85,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
       <main className="flex-1 flex flex-col min-w-0">
         <header className="h-16 border-b border-border bg-card flex items-center px-6 md:hidden">
-          <Link href="/admin" className="font-bold tracking-tight text-lg">
-            SINJAPAN 管理者
+          <Link href="/admin" className="flex items-center gap-2">
+            <img src="/logo.jpg" alt="Chat LOGI" className="h-6 w-auto" />
+            <span className="text-sm font-normal text-muted-foreground">管理者</span>
           </Link>
         </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-8">

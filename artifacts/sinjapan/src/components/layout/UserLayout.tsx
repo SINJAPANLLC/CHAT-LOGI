@@ -20,8 +20,8 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-[100dvh] flex flex-col bg-background font-sans text-foreground">
       <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href="/" className="font-bold tracking-tight text-xl">
-            SINJAPAN
+          <Link href="/" className="flex items-center">
+            <img src="/logo.jpg" alt="Chat LOGI" className="h-7 w-auto" />
           </Link>
 
           <div className="flex items-center gap-4">
@@ -67,7 +67,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
 
       <footer className="border-t border-border py-8 md:py-12 mt-auto">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} SINJAPAN. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} Chat LOGI. All rights reserved.</p>
           <p className="mt-2 text-xs">物流は、考えなくていい。</p>
         </div>
       </footer>

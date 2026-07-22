@@ -61,9 +61,9 @@ export default function Home() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-4 py-20 max-w-3xl mx-auto w-full">
       <div className="w-full text-center space-y-4 mb-16">
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight">
-          SINJAPAN
-        </h1>
+        <div className="flex justify-center mb-4">
+          <img src="/logo.jpg" alt="Chat LOGI" className="h-14 md:h-16 w-auto" />
+        </div>
         <p className="text-lg md:text-xl text-muted-foreground font-medium">
           物流は、考えなくていい。
         </p>
