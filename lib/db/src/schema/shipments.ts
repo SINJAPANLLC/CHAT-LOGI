@@ -47,8 +47,14 @@ export const shipmentsTable = pgTable("shipments", {
   cargoSize: text("cargo_size"),
   pickupDatetime: text("pickup_datetime"),
   deliveryDeadline: text("delivery_deadline"),
-  vehicleType: text("vehicle_type"),
+  vehicleType: text("vehicle_type"),         // 表示用 (例: "4tウイング")
+  vehicleSize: text("vehicle_size"),          // 軽貨物/1t/2t/4t/10t/大型
+  vehicleBodyType: text("vehicle_body_type"), // 平ボディ/ウイング/バン/冷凍冷蔵/幌
+  truckCount: integer("truck_count"),
+  deliveryType: text("delivery_type"),        // スポット/定期
   deliveryMethod: text("delivery_method"),
+  additionalWork: text("additional_work"),
+  highwayUse: text("highway_use"),
   customerPrice: numeric("customer_price", { precision: 12, scale: 2 }),
   carrierCost: numeric("carrier_cost", { precision: 12, scale: 2 }),
   grossProfit: numeric("gross_profit", { precision: 12, scale: 2 }),
