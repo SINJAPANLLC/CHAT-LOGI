@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
-import { useCreateShipment, useStartAiChat, useGetMe } from '@workspace/api-client-react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { ArrowRight, Loader2 } from 'lucide-react';
+import { useStartAiChat, useGetMe } from '@workspace/api-client-react';
+import { Loader2, Mic, Plus, Volume2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const DRAFT_KEY = 'sinjapan_draft_message';
@@ -18,22 +16,19 @@ export default function Home() {
   const [text, setText] = useState(() => localStorage.getItem(DRAFT_KEY) || '');
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const { data: user, isLoading: authLoading } = useGetMe();
-  const createShipment = useCreateShipment();
+  const { data: user } = useGetMe();
   const startAiChat = useStartAiChat();
+  const isSubmitting = startAiChat.isPending;
 
-  const isSubmitting = createShipment.isPending || startAiChat.isPending;
-
-  // Clear draft once we land here after login
   useEffect(() => {
     if (user) localStorage.removeItem(DRAFT_KEY);
   }, [user]);
 
   const handleSubmit = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || isSubmitting) return;
 
-    // Not logged in → save draft and redirect to login
     if (!user) {
       localStorage.setItem(DRAFT_KEY, text);
       setLocation('/login');
@@ -41,15 +36,10 @@ export default function Home() {
     }
 
     try {
-      // Start the AI chat (creates shipment + first AI response in one call)
-      const chatRes = await startAiChat.mutateAsync({
-        data: { message: text }
-      });
-
+      const chatRes = await startAiChat.mutateAsync({ data: { message: text } });
       localStorage.removeItem(DRAFT_KEY);
-      // Navigate to chat interface using the shipment id from the AI response
       setLocation(`/chat/${chatRes.shipmentId}`);
-    } catch (err) {
+    } catch {
       toast({
         variant: "destructive",
         title: "エラー",
@@ -58,53 +48,87 @@ export default function Home() {
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-4 py-20 max-w-3xl mx-auto w-full">
-      <div className="w-full text-center space-y-4 mb-16">
-        <div className="flex justify-center mb-4">
-          <img src="/logo.jpg" alt="Chat LOGI" className="h-14 md:h-16 w-auto" />
-        </div>
-        <p className="text-lg md:text-xl text-muted-foreground font-medium">
-          物流は、考えなくていい。
-        </p>
+    <div className="flex-1 flex flex-col items-center justify-center px-4 pb-24 max-w-3xl mx-auto w-full">
+
+      {/* Logo */}
+      <div className="mb-12 flex justify-center">
+        <img src="/logo.jpg" alt="Chat LOGI" className="h-12 md:h-14 w-auto" />
       </div>
 
-      <div className="w-full space-y-6">
-        <div className="relative group">
-          <Textarea 
+      {/* Heading */}
+      <h1 className="text-2xl md:text-3xl font-normal text-foreground mb-10 tracking-tight">
+        今日は何を運びましょうか？
+      </h1>
+
+      {/* Input bar */}
+      <div className="w-full">
+        <div
+          className="flex items-center gap-2 bg-muted/60 rounded-full px-4 py-3 border border-border/40 hover:border-border transition-colors focus-within:border-border focus-within:bg-muted/80"
+          onClick={() => inputRef.current?.focus()}
+        >
+          {/* Plus button */}
+          <button
+            type="button"
+            className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
+            disabled={isSubmitting}
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+
+          {/* Text input */}
+          <input
+            ref={inputRef}
+            type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="今日は何を運びますか？"
-            className="w-full min-h-[160px] text-lg p-6 bg-transparent border-2 border-border focus-visible:ring-0 focus-visible:border-primary resize-none rounded-xl transition-colors"
+            onKeyDown={handleKeyDown}
+            placeholder="配送の内容を入力してください"
             disabled={isSubmitting}
+            className="flex-1 bg-transparent outline-none text-base text-foreground placeholder:text-muted-foreground disabled:opacity-50"
           />
-          <div className="absolute bottom-4 right-4">
-            <Button 
-              size="lg"
-              className="rounded-full px-8"
-              disabled={!text.trim() || isSubmitting}
-              onClick={handleSubmit}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {isSubmitting ? (
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground mx-2" />
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="w-8 h-8 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
+                >
+                  <Mic className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={text.trim() ? handleSubmit : undefined}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-background border border-border text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                >
+                  <Volume2 className="h-4 w-4" />
                   相談する
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </>
-              )}
-            </Button>
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        <div className="pt-8">
-          <p className="text-sm text-muted-foreground mb-4 font-medium px-2">例えば、このように入力してください：</p>
-          <div className="flex flex-col gap-3">
+        {/* Example suggestions */}
+        <div className="mt-8">
+          <p className="text-xs text-muted-foreground mb-3 px-1">例えば：</p>
+          <div className="flex flex-col gap-2">
             {EXAMPLES.map((example, i) => (
               <button
                 key={i}
-                onClick={() => setText(example)}
-                className="text-left px-4 py-3 rounded-lg border border-border/50 text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground hover:border-border transition-all duration-200"
+                onClick={() => { setText(example); inputRef.current?.focus(); }}
+                className="text-left px-4 py-2.5 rounded-full border border-border/50 text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground hover:border-border transition-all duration-150"
                 disabled={isSubmitting}
               >
                 {example}
