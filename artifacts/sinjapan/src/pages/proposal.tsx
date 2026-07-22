@@ -31,8 +31,9 @@ export default function Proposal() {
     setLocation(`/shipment/${shipmentId}`);
   };
 
-  const handleModify = () => {
-    // Go back to chat to modify
+  const handleModify = async () => {
+    // Reset status back to ヒアリング中 so chat page doesn't redirect back here
+    await updateStatus.mutateAsync({ id: shipmentId, data: { status: 'ヒアリング中' } });
     setLocation(`/chat/${shipmentId}`);
   };
 
