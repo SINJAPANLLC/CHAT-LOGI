@@ -7,15 +7,7 @@ import { Package, ChevronRight, Loader2, CreditCard } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-const STATUS_STYLE: Record<string, { label: string; cls: string; icon?: React.ReactNode }> = {
-  '受付中':    { label: '受付中',    cls: 'bg-muted text-muted-foreground border-border' },
-  'ヒアリング中': { label: 'AI確認中', cls: 'bg-blue-50 text-blue-600 border-blue-200' },
-  '顧客承認':  { label: '承認済み',  cls: 'bg-sky-100 text-sky-700 border-sky-200' },
-  '受付完了':  { label: '受付完了',  cls: 'bg-sky-100 text-sky-700 border-sky-200' },
-  '手配中':    { label: '手配中',    cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-  '配車確定':  { label: '配車確定',  cls: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  '集荷完了':  { label: '集荷完了',  cls: 'bg-violet-100 text-violet-700 border-violet-200' },
-  '配送中':    { label: '配送中',    cls: 'bg-orange-100 text-orange-700 border-orange-200' },
+const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
   '納品完了':  { label: '決済待ち',  cls: 'bg-foreground text-background border-foreground' },
   '請求完了':  { label: '支払い完了',cls: 'bg-green-100 text-green-700 border-green-200' },
   'キャンセル':{ label: 'キャンセル',cls: 'bg-red-100 text-red-600 border-red-200' },
