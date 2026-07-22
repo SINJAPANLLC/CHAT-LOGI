@@ -101,7 +101,7 @@ export default function Chat() {
     conversations[conversations.length - 1].sender === 'ai';
 
   return (
-    <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full" style={{ height: 'calc(100dvh - 7rem)' }}>
+    <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full min-h-0">
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-6 space-y-6">

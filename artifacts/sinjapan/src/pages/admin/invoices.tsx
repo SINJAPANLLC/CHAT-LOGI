@@ -137,7 +137,7 @@ export default function AdminInvoices() {
 
       <div className="flex gap-6">
         {/* テーブル */}
-        <div className={`flex-1 rounded-xl border border-border shadow-sm overflow-hidden ${selected ? 'hidden lg:block' : ''}`}>
+        <div className={`flex-1 rounded-xl border border-border shadow-sm overflow-x-auto ${selected ? 'hidden lg:block' : ''}`}>
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/40 border-b border-border">

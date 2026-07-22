@@ -159,7 +159,7 @@ export default function Settings() {
       <Section title="プロフィール">
         <form onSubmit={handleProfileSave} className="space-y-4">
           <Field label="メールアドレス" value={user?.email ?? ''} disabled />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="氏名" value={name} onChange={setName} placeholder="山田 太郎" />
             <Field label="会社名" value={companyName} onChange={setCompanyName} placeholder="株式会社〇〇" />
           </div>
@@ -200,7 +200,7 @@ export default function Settings() {
             onChange={setCardHolderName}
             placeholder="TARO YAMADA"
           />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field
               label="有効期限（MM/YY）"
               value={cardExpiry}

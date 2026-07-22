@@ -82,8 +82,8 @@ function PLTable({ year, setYear }: { year: number; setYear: (y: number) => void
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : (
-        <div className="rounded-xl border border-border shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border border-border shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[700px]">
             <thead>
               <tr className="bg-muted/40 border-b border-border">
                 <th className="px-5 py-3 text-left font-medium text-muted-foreground">月</th>

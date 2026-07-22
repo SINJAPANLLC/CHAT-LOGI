@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 function Row({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
-    <div className="px-6 py-5 grid grid-cols-3 gap-4 border-b border-border/40 last:border-0">
+    <div className="px-4 sm:px-6 py-4 sm:py-5 grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 border-b border-border/40 last:border-0">
       <div className="flex items-start gap-2 text-sm text-muted-foreground font-medium pt-0.5">
         {icon}{label}
       </div>

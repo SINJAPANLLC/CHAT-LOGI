@@ -262,8 +262,8 @@ function SendHistory() {
       ) : Object.keys(grouped).length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">送信履歴はありません</div>
       ) : (
-        <div className="rounded-xl border border-border shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+        <div className="rounded-xl border border-border shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="bg-muted/40 border-b border-border">
                 <th className="px-5 py-3 text-left font-medium text-muted-foreground">件名</th>

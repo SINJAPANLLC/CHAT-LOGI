@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
+
 import { useGetMe, useLogout } from '@workspace/api-client-react';
 import {
   Plus, Clock, LayoutDashboard, LogOut, Settings, Menu, X, FileText, Building2
@@ -97,6 +98,8 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   );
 
   const isLoggedIn = !!user;
+  // チャットページはフッターなし・フル高さ確保
+  const isChatPage = location.startsWith('/chat/');
 
   return (
     <div className="min-h-[100dvh] flex bg-background font-sans text-foreground">
@@ -161,15 +164,17 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           )}
         </header>
 
-        <main className="flex-1 flex flex-col">
+        <main className={`flex-1 flex flex-col ${isChatPage ? 'overflow-hidden' : ''}`}>
           {children}
         </main>
 
-        <footer className="border-t border-border py-5 mt-auto">
-          <p className="text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Chat LOGI. All rights reserved.
-          </p>
-        </footer>
+        {!isChatPage && (
+          <footer className="border-t border-border py-5 mt-auto">
+            <p className="text-center text-xs text-muted-foreground">
+              © {new Date().getFullYear()} Chat LOGI. All rights reserved.
+            </p>
+          </footer>
+        )}
       </div>
     </div>
   );
