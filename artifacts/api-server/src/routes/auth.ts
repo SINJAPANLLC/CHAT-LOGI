@@ -35,7 +35,7 @@ router.post("/auth/login", async (req, res): Promise<void> => {
 
   // Generate auth token (works regardless of cookie support)
   const token = generateToken();
-  setToken(token, { userId: user.id, userRole: user.role, userEmail: user.email });
+  await setToken(token, { userId: user.id, userRole: user.role, userEmail: user.email });
 
   // Also set session (belt and suspenders)
   req.session.userId = user.id;
@@ -66,7 +66,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     .returning();
 
   const token = generateToken();
-  setToken(token, { userId: user.id, userRole: user.role, userEmail: user.email });
+  await setToken(token, { userId: user.id, userRole: user.role, userEmail: user.email });
 
   req.session.userId = user.id;
   req.session.userRole = user.role;
@@ -75,11 +75,10 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   res.status(201).json({ user: formatUser(user), token });
 });
 
-router.post("/auth/logout", (req, res): void => {
-  // Delete token if provided
+router.post("/auth/logout", async (req, res): Promise<void> => {
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
-    deleteToken(authHeader.slice(7));
+    await deleteToken(authHeader.slice(7));
   }
   req.session.destroy(() => {});
   res.json({ success: true });

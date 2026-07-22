@@ -1,12 +1,12 @@
 import { Request, Response, NextFunction } from "express";
 import { getToken } from "../lib/tokenStore";
 
-function resolveUser(req: Request): boolean {
-  // 1. Try Bearer token from Authorization header (primary for browser clients)
+async function resolveUser(req: Request): Promise<boolean> {
+  // 1. Try Bearer token from Authorization header
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    const data = getToken(token);
+    const data = await getToken(token);
     if (data) {
       req.session.userId = data.userId;
       req.session.userRole = data.userRole;
@@ -20,23 +20,24 @@ function resolveUser(req: Request): boolean {
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
-  if (!resolveUser(req)) {
+  resolveUser(req).then(ok => {
+    if (!ok) { res.status(401).json({ error: "認証が必要です" }); return; }
+    next();
+  }).catch(() => {
     res.status(401).json({ error: "認証が必要です" });
-    return;
-  }
-  next();
+  });
 }
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
-  if (!resolveUser(req)) {
+  resolveUser(req).then(ok => {
+    if (!ok) { res.status(401).json({ error: "認証が必要です" }); return; }
+    if (req.session.userRole !== "admin") {
+      res.status(403).json({ error: "管理者権限が必要です" }); return;
+    }
+    next();
+  }).catch(() => {
     res.status(401).json({ error: "認証が必要です" });
-    return;
-  }
-  if (req.session.userRole !== "admin") {
-    res.status(403).json({ error: "管理者権限が必要です" });
-    return;
-  }
-  next();
+  });
 }
 
 // Augment session type
