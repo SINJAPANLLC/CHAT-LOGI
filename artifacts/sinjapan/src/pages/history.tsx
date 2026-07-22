@@ -1,23 +1,26 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'wouter';
 import { useListShipments } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Package, ChevronRight, Loader2, CreditCard } from 'lucide-react';
+import { Package, ChevronRight, Loader2, CreditCard, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { useToast } from '@/hooks/use-toast';
 
 const BLACK = 'bg-foreground text-background border-foreground';
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
-  '顧客承認':  { label: '顧客承認',  cls: BLACK },
-  '受付完了':  { label: '受付完了',  cls: BLACK },
-  '手配中':    { label: '手配中',    cls: BLACK },
-  '配車確定':  { label: '配車確定',  cls: BLACK },
-  '集荷完了':  { label: '集荷完了',  cls: BLACK },
-  '配送中':    { label: '配送中',    cls: BLACK },
-  '納品完了':  { label: '決済待ち',  cls: BLACK },
-  '請求完了':  { label: '支払い完了',cls: 'bg-green-100 text-green-700 border-green-200' },
-  'キャンセル':{ label: 'キャンセル',cls: 'bg-red-100 text-red-600 border-red-200' },
+  '顧客承認':      { label: '顧客承認',      cls: BLACK },
+  '受付完了':      { label: '受付完了',      cls: BLACK },
+  '手配中':        { label: '手配中',        cls: BLACK },
+  '配車確定':      { label: '配車確定',      cls: BLACK },
+  '集荷完了':      { label: '集荷完了',      cls: BLACK },
+  '配送中':        { label: '配送中',        cls: BLACK },
+  '納品完了':      { label: '決済待ち',      cls: BLACK },
+  '請求完了':      { label: '支払い完了',    cls: 'bg-green-100 text-green-700 border-green-200' },
+  'キャンセル':    { label: 'キャンセル',    cls: 'bg-red-100 text-red-600 border-red-200' },
+  'キャンセル申請中': { label: 'キャンセル申請中', cls: 'bg-orange-100 text-orange-700 border-orange-200' },
 };
 
 function StatusBadge({ status }: { status: string }) {
@@ -30,8 +33,36 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const IMMEDIATE_CANCEL = ['受付中', 'ヒアリング中', '見積提示'];
+const CAN_REQUEST_CANCEL = ['顧客承認', '受付完了', '手配中', '配車確定', '集荷完了', '配送中', '納品完了'];
+
+function useCancelAction(onDone: () => void) {
+  const { toast } = useToast();
+  const [acting, setActing] = useState<number | null>(null);
+  const request = async (id: number, status: string) => {
+    setActing(id);
+    try {
+      const token = localStorage.getItem('sinjapan_auth_token');
+      const res = await fetch(`/api/shipments/${id}/cancel-request`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      const label = IMMEDIATE_CANCEL.includes(status) ? 'キャンセルしました' : 'キャンセル申請を送りました';
+      toast({ title: label });
+      onDone();
+    } catch {
+      toast({ variant: 'destructive', title: '操作に失敗しました' });
+    } finally { setActing(null); }
+  };
+  return { acting, request };
+}
+
 export default function History() {
   const { data: shipments, isLoading } = useListShipments({});
+  const queryClient = useQueryClient();
+  const reload = () => queryClient.invalidateQueries();
+  const { acting, request } = useCancelAction(reload);
 
   if (isLoading) {
     return (
@@ -103,6 +134,18 @@ export default function History() {
                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     </Link>
+                    {(IMMEDIATE_CANCEL.includes(shipment.status) || CAN_REQUEST_CANCEL.includes(shipment.status)) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={acting === shipment.id}
+                        onClick={() => request(shipment.id, shipment.status)}
+                        className="w-full h-9 px-3 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+                      >
+                        {acting === shipment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3 mr-1" />}
+                        {IMMEDIATE_CANCEL.includes(shipment.status) ? 'キャンセル' : 'キャンセル申請'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>

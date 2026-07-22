@@ -10,7 +10,7 @@ import {
   UpdateShipmentParams,
   UpdateShipmentStatusParams,
 } from "@workspace/api-zod";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireAdmin } from "../middlewares/auth";
 
 const router: IRouter = Router();
 
@@ -184,6 +184,66 @@ router.patch("/shipments/:id/status", requireAuth, async (req, res): Promise<voi
     .returning();
 
   if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+
+  res.json(formatShipment(shipment));
+});
+
+// POST /shipments/:id/cancel-request — 顧客がキャンセル申請
+const IMMEDIATE_CANCEL = ['受付中', 'ヒアリング中', '見積提示'];
+const NO_CANCEL = ['請求完了', 'キャンセル', 'キャンセル申請中'];
+
+router.post("/shipments/:id/cancel-request", requireAuth, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const [current] = await db.select().from(shipmentsTable).where(eq(shipmentsTable.id, id)).limit(1);
+  if (!current) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+  if (current.userId !== req.session.userId) { res.status(403).json({ error: "権限がありません" }); return; }
+  if (NO_CANCEL.includes(current.status)) { res.status(400).json({ error: "このステータスではキャンセルできません" }); return; }
+
+  const newStatus = IMMEDIATE_CANCEL.includes(current.status) ? 'キャンセル' : 'キャンセル申請中';
+  const [shipment] = await db
+    .update(shipmentsTable)
+    .set({
+      status: newStatus as any,
+      cancelPreviousStatus: newStatus === 'キャンセル申請中' ? current.status : null,
+      updatedAt: new Date(),
+    })
+    .where(eq(shipmentsTable.id, id))
+    .returning();
+
+  res.json(formatShipment(shipment));
+});
+
+// PATCH /shipments/:id/cancel-approve — 管理者がキャンセル承認
+router.patch("/shipments/:id/cancel-approve", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const [shipment] = await db
+    .update(shipmentsTable)
+    .set({ status: 'キャンセル' as any, cancelPreviousStatus: null, updatedAt: new Date() })
+    .where(eq(shipmentsTable.id, id))
+    .returning();
+
+  if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+  res.json(formatShipment(shipment));
+});
+
+// PATCH /shipments/:id/cancel-reject — 管理者がキャンセル却下（元のステータスに戻す）
+router.patch("/shipments/:id/cancel-reject", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const [current] = await db.select().from(shipmentsTable).where(eq(shipmentsTable.id, id)).limit(1);
+  if (!current) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+
+  const revertTo = (current.cancelPreviousStatus || '手配中') as any;
+  const [shipment] = await db
+    .update(shipmentsTable)
+    .set({ status: revertTo, cancelPreviousStatus: null, updatedAt: new Date() })
+    .where(eq(shipmentsTable.id, id))
+    .returning();
 
   res.json(formatShipment(shipment));
 });

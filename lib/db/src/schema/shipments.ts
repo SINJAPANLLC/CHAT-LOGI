@@ -24,6 +24,7 @@ export const shipmentStatusEnum = pgEnum("shipment_status", [
   "納品完了",
   "請求完了",
   "キャンセル",
+  "キャンセル申請中",
 ]);
 
 export const paymentStatusEnum = pgEnum("payment_status", [
@@ -74,6 +75,7 @@ export const shipmentsTable = pgTable("shipments", {
   squarePaymentId: text("square_payment_id"),
   squareCaptured: text("square_captured").default("false"),
   paymentMethod: text("payment_method").default("card"), // card/invoice
+  cancelPreviousStatus: text("cancel_previous_status"),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

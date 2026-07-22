@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useRoute, Link } from 'wouter';
 import { useGetShipment, getGetShipmentQueryKey, useListConversations } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Circle, Loader2, CreditCard, MessageSquare, X, Bot, User, Truck, Phone, MapPin } from 'lucide-react';
+import { Check, Circle, Loader2, CreditCard, MessageSquare, X, Bot, User, Truck, Phone, MapPin, AlertTriangle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const STATUS_FLOW = [
   '受付完了',
@@ -15,10 +17,17 @@ const STATUS_FLOW = [
   '決済待ち',
 ];
 
+const IMMEDIATE_CANCEL_STATUSES = ['受付中', 'ヒアリング中', '見積提示'];
+const CAN_REQUEST_CANCEL_STATUSES = ['顧客承認', '受付完了', '手配中', '配車確定', '集荷完了', '配送中', '納品完了'];
+
 export default function Shipment() {
   const [, params] = useRoute('/shipment/:id');
   const shipmentId = Number(params?.id);
   const [showChat, setShowChat] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: shipment, isLoading } = useGetShipment(shipmentId, {
     query: {
@@ -51,6 +60,27 @@ export default function Shipment() {
 
   const isPaid = shipment.status === '請求完了';
   const needsPayment = shipment.status === '納品完了';
+  const isCancelRequested = shipment.status === 'キャンセル申請中';
+  const isCancelled = shipment.status === 'キャンセル';
+  const canImmediateCancel = IMMEDIATE_CANCEL_STATUSES.includes(shipment.status);
+  const canRequestCancel = CAN_REQUEST_CANCEL_STATUSES.includes(shipment.status);
+
+  const handleCancelRequest = async () => {
+    setCancelLoading(true);
+    try {
+      const token = localStorage.getItem('sinjapan_auth_token');
+      const res = await fetch(`/api/shipments/${shipmentId}/cancel-request`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
+      toast({ title: canImmediateCancel ? 'キャンセルしました' : 'キャンセル申請を送りました' });
+      setShowCancelConfirm(false);
+    } catch {
+      toast({ variant: 'destructive', title: '操作に失敗しました' });
+    } finally { setCancelLoading(false); }
+  };
 
   return (
     <>
@@ -322,6 +352,48 @@ export default function Shipment() {
                 支払い完了
               </div>
             )}
+
+            {/* キャンセル申請中 */}
+            {isCancelRequested && (
+              <div className="rounded-xl bg-orange-50 border border-orange-200 p-4 flex items-center gap-2 text-orange-700 text-sm">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>キャンセル申請中です。担当者が確認後、ご連絡します。</span>
+              </div>
+            )}
+
+            {/* キャンセルボタン */}
+            {(canImmediateCancel || canRequestCancel) && !showCancelConfirm && (
+              <button
+                onClick={() => setShowCancelConfirm(true)}
+                className="w-full text-xs text-muted-foreground hover:text-red-500 transition-colors py-2 text-center underline-offset-2 hover:underline"
+              >
+                {canImmediateCancel ? 'この依頼をキャンセルする' : 'キャンセルを申請する'}
+              </button>
+            )}
+
+            {/* キャンセル確認 */}
+            {showCancelConfirm && (
+              <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
+                <p className="text-sm font-semibold text-red-700">
+                  {canImmediateCancel ? 'この依頼をキャンセルしますか？' : 'キャンセルを申請しますか？'}
+                </p>
+                <p className="text-xs text-red-600">
+                  {canImmediateCancel
+                    ? '即時キャンセルされます。この操作は取り消せません。'
+                    : '担当者が確認後、承認または却下をお知らせします。'}
+                </p>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setShowCancelConfirm(false)} className="flex-1 text-xs">
+                    戻る
+                  </Button>
+                  <Button size="sm" disabled={cancelLoading} onClick={handleCancelRequest}
+                    className="flex-1 text-xs bg-red-600 hover:bg-red-700 text-white">
+                    {cancelLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : canImmediateCancel ? 'キャンセルする' : '申請する'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
 

@@ -139,7 +139,7 @@ export default function AdminShipmentDetail() {
 
   const statuses = [
     '受付中', 'ヒアリング中', '見積提示', '顧客承認',
-    '手配中', '配車確定', '集荷完了', '配送中', '納品完了', '請求完了', 'キャンセル'
+    '手配中', '配車確定', '集荷完了', '配送中', '納品完了', '請求完了', 'キャンセル', 'キャンセル申請中'
   ];
 
   const grossProfit = Number(shipment.customerPrice || 0) - Number(shipment.carrierCost || 0);
@@ -168,6 +168,42 @@ export default function AdminShipmentDetail() {
           </Select>
         </div>
       </div>
+
+      {/* キャンセル申請中バナー */}
+      {shipment.status === 'キャンセル申請中' && (
+        <div className="rounded-xl border border-orange-300 bg-orange-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+          <div className="flex-1">
+            <p className="font-semibold text-orange-800 text-sm">キャンセル申請が届いています</p>
+            <p className="text-xs text-orange-700 mt-0.5">顧客からキャンセルの申請があります。承認または却下してください。</p>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button size="sm" variant="outline"
+              className="border-orange-300 text-orange-700 hover:bg-orange-100 text-xs"
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem('sinjapan_auth_token');
+                  await fetch(`/api/shipments/${shipment.id}/cancel-reject`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+                  queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
+                  toast({ title: 'キャンセル申請を却下しました' });
+                } catch { toast({ variant: 'destructive', title: '操作に失敗しました' }); }
+              }}>
+              却下
+            </Button>
+            <Button size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white text-xs"
+              onClick={async () => {
+                try {
+                  const token = localStorage.getItem('sinjapan_auth_token');
+                  await fetch(`/api/shipments/${shipment.id}/cancel-approve`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+                  queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
+                  toast({ title: 'キャンセルを承認しました' });
+                } catch { toast({ variant: 'destructive', title: '操作に失敗しました' }); }
+              }}>
+              キャンセル承認
+            </Button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* 左カラム */}
