@@ -64,6 +64,9 @@ export const shipmentsTable = pgTable("shipments", {
   ),
   assignedDriverName: text("assigned_driver_name"),
   paymentStatus: paymentStatusEnum("payment_status"),
+  squarePaymentId: text("square_payment_id"),
+  squareCaptured: text("square_captured").default("false"),
+  paymentMethod: text("payment_method").default("card"), // card/invoice
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

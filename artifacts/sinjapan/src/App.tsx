@@ -29,6 +29,13 @@ import AdminShipmentDetail from '@/pages/admin/shipment-detail';
 import AdminCarriers from '@/pages/admin/carriers';
 import AdminCustomers from '@/pages/admin/customers';
 import AdminPricing from '@/pages/admin/pricing';
+import AdminCorporate from '@/pages/admin/corporate';
+import AdminInvoices from '@/pages/admin/invoices';
+
+// User Extra Pages
+import CorporateApply from '@/pages/corporate-apply';
+import Invoices from '@/pages/invoices';
+import InvoiceDetail from '@/pages/invoice-detail';
 
 const queryClient = new QueryClient();
 
@@ -58,6 +65,12 @@ function Router() {
       <Route path="/admin/pricing">
         <AdminLayout><AdminPricing /></AdminLayout>
       </Route>
+      <Route path="/admin/corporate">
+        <AdminLayout><AdminCorporate /></AdminLayout>
+      </Route>
+      <Route path="/admin/invoices">
+        <AdminLayout><AdminInvoices /></AdminLayout>
+      </Route>
 
       {/* User */}
       <Route path="/">
@@ -80,6 +93,15 @@ function Router() {
       </Route>
       <Route path="/settings">
         <UserLayout><Settings /></UserLayout>
+      </Route>
+      <Route path="/corporate-apply">
+        <UserLayout><CorporateApply /></UserLayout>
+      </Route>
+      <Route path="/invoices">
+        <UserLayout><Invoices /></UserLayout>
+      </Route>
+      <Route path="/invoices/:id">
+        <UserLayout><InvoiceDetail /></UserLayout>
       </Route>
 
       <Route component={NotFound} />

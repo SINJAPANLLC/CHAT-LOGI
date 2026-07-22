@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useGetMe, useLogout } from '@workspace/api-client-react';
 import {
-  Plus, Clock, LayoutDashboard, LogOut, Settings, Menu, X
+  Plus, Clock, LayoutDashboard, LogOut, Settings, Menu, X, FileText, Building2
 } from 'lucide-react';
 
 export function UserLayout({ children }: { children: React.ReactNode }) {
@@ -45,6 +45,22 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
               <Clock className="h-4 w-4 shrink-0" />
               配送履歴
+            </button>
+          </Link>
+        )}
+        {user && (
+          <Link href="/invoices" onClick={() => setMobileOpen(false)}>
+            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <FileText className="h-4 w-4 shrink-0" />
+              請求書
+            </button>
+          </Link>
+        )}
+        {user && (
+          <Link href="/corporate-apply" onClick={() => setMobileOpen(false)}>
+            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <Building2 className="h-4 w-4 shrink-0" />
+              法人口座
             </button>
           </Link>
         )}

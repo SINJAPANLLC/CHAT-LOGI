@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, numeric, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -17,6 +17,14 @@ export const usersTable = pgTable("users", {
   cardBrand: text("card_brand"),
   cardLast4: text("card_last4"),
   cardExpiry: text("card_expiry"),
+  // 法人・与信管理
+  isCompany: boolean("is_company").default(false),
+  corporateNumber: text("corporate_number"),          // 法人番号（13桁）
+  creditLimit: numeric("credit_limit", { precision: 12, scale: 2 }).default("0"),
+  creditUsed: numeric("credit_used", { precision: 12, scale: 2 }).default("0"),
+  creditStatus: text("credit_status").default("none"), // none/pending/approved/rejected/suspended
+  paymentTerms: text("payment_terms").default("Net30"),
+  preferredPaymentMethod: text("preferred_payment_method").default("card"), // card/invoice
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
