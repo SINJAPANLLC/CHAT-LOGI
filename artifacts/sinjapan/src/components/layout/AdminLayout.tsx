@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'wouter';
 import { useGetMe, useLogout } from '@workspace/api-client-react';
-import { LayoutDashboard, Package, Truck, Users, CircleDollarSign, LogOut, Loader2, ArrowLeft, FileText, BarChart3, Bell } from 'lucide-react';
+import { LayoutDashboard, Package, Truck, Users, CircleDollarSign, Loader2, ArrowLeft, FileText, BarChart3, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -79,9 +79,6 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
               <ArrowLeft className="h-3 w-3" />
               一般画面へ
             </Link>
-            <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-foreground">
-              <LogOut className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </aside>
