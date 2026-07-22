@@ -110,10 +110,18 @@ export default function AdminShipments() {
                       <div className="truncate w-48 mt-0.5">{shipment.deliveryAddress || '-'}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap
-                        ${shipment.status === '顧客承認' ? 'bg-primary text-primary-foreground border-primary' : 
-                          shipment.status === '手配中' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-500' :
-                          'bg-muted text-foreground border-border'
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border whitespace-nowrap
+                        ${ ['顧客承認', '配車確定', '納品完了'].includes(shipment.status)
+                            ? 'bg-foreground text-background border-foreground'
+                          : shipment.status === '手配中'
+                            ? 'bg-amber-100 text-amber-800 border-amber-200'
+                          : shipment.status === '配送中'
+                            ? 'bg-blue-100 text-blue-800 border-blue-200'
+                          : shipment.status === '請求完了'
+                            ? 'bg-green-100 text-green-800 border-green-200'
+                          : shipment.status === 'キャンセル'
+                            ? 'bg-red-100 text-red-800 border-red-200'
+                          : 'bg-muted text-muted-foreground border-border'
                         }
                       `}>
                         {shipment.status}
