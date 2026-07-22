@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useRoute } from 'wouter';
 import {
   useGetShipment, useUpdateShipment, useUpdateShipmentStatus,
@@ -58,6 +58,14 @@ export default function AdminShipmentDetail() {
 
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  const arrangeCardRef = useRef<HTMLDivElement>(null);
+  const [chatHeight, setChatHeight] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (arrangeCardRef.current) {
+      setChatHeight(arrangeCardRef.current.offsetHeight);
+    }
+  }, [shipment, editMode]);
 
   React.useEffect(() => {
     if (shipment) {
@@ -181,7 +189,7 @@ export default function AdminShipmentDetail() {
 
       {/* Row 2: 手配内容 + AIヒアリング履歴（同じ高さ） */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-stretch">
-        <div className="lg:col-span-3">
+        <div className="lg:col-span-3" ref={arrangeCardRef}>
           <Section
             title="手配内容"
             action={
@@ -260,8 +268,8 @@ export default function AdminShipmentDetail() {
         </div>
 
         {/* AIヒアリング履歴 */}
-        <div className="lg:col-span-2 flex flex-col">
-          <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col flex-1 min-h-0">
+        <div className="lg:col-span-2 flex flex-col" style={chatHeight ? { height: chatHeight } : {}}>
+          <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col flex-1 overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-4 border-b border-border shrink-0">
               <Bot className="h-4 w-4 text-muted-foreground" />
               <h2 className="font-semibold text-sm">AIヒアリング履歴</h2>
