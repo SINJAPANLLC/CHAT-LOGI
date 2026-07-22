@@ -12,7 +12,19 @@ function parseId(raw: string | string[]): number {
   return parseInt(s, 10);
 }
 
-const SYSTEM_PROMPT = `あなたはChat LOGIの物流AIアシスタントです。日本語で丁寧かつ簡潔に応答してください。
+function buildSystemPrompt(): string {
+  const today = new Date();
+  const jst = new Date(today.getTime() + 9 * 60 * 60 * 1000);
+  const dateStr = jst.toISOString().slice(0, 10); // YYYY-MM-DD
+  const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+  const dayOfWeek = dayNames[jst.getUTCDay()];
+
+  return `あなたはChat LOGIの物流AIアシスタントです。日本語で丁寧かつ簡潔に応答してください。
+
+## 今日の日付
+今日は ${dateStr}（${dayOfWeek}曜日）です。「明日」「来週」などの相対表現は必ずこの日付を基準に計算し、提案では必ず「YYYY-MM-DD」形式の具体的な日付で出力してください。
+
+---
 
 ## ゴール
 3回前後のやり取りで必要情報を集め、最後にプラン提案を出す。
@@ -24,9 +36,9 @@ const SYSTEM_PROMPT = `あなたはChat LOGIの物流AIアシスタントです�
 ### フェーズ1：ルート・日程
 以下のうち不足している情報を1つ質問する。
 - 積込先（市区町村レベル以上）
-- 集荷日
+- 集荷日（具体的な日付）
 - 納品先（市区町村レベル以上）
-- 納品希望日
+- 納品希望日（具体的な日付）
 
 ### フェーズ2：荷物情報
 以下のうち不足している情報を1つ質問する。
@@ -57,7 +69,7 @@ const SYSTEM_PROMPT = `あなたはChat LOGIの物流AIアシスタントです�
 <options>["選択肢A", "選択肢B", "選択肢C", "その他"]</options>
 
 例）集荷日を聞く場合：
-<options>["今日", "明日", "明後日", "来週以降", "日程未定"]</options>
+<options>["今日（${dateStr}）", "明日", "明後日", "来週以降", "日程未定"]</options>
 
 例）荷姿を聞く場合：
 <options>["パレット", "段ボール箱", "機械・設備", "バラ積み", "その他"]</options>
@@ -76,13 +88,22 @@ const SYSTEM_PROMPT = `あなたはChat LOGIの物流AIアシスタントです�
 ## プラン提案フォーマット
 フェーズ3完了後、以下の形式で提案すること。
 提案文の後に必ず <proposal> タグを出力する。
+**日付は必ず YYYY-MM-DD HH:MM 形式で出力すること（例：2026-07-24 09:00）。「明日」「翌日」などの表現は使わない。**
 
 <proposal>
 {
   "vehicleType": "4tウイング",
-  "deliveryMethod": "スポットチャーター",
-  "pickupDatetime": "明日 9:00〜11:00",
-  "deliveryDatetime": "翌日午前中",
+  "truckCount": 1,
+  "deliveryType": "スポット",
+  "deliveryMethod": "チャーター便",
+  "pickupAddress": "東京都渋谷区恵比寿",
+  "pickupDatetime": "2026-07-24 09:00",
+  "deliveryAddress": "大阪府大阪市北区",
+  "deliveryDatetime": "2026-07-25 12:00",
+  "cargoType": "段ボール箱",
+  "cargoQuantity": "50箱",
+  "additionalWork": "手積み・手降ろしあり",
+  "highwayFee": "別途実費",
   "estimatedPrice": 85000,
   "reason": "パレット20枚・東京〜大阪の距離を考慮した最適プランです。",
   "notes": "高速代は実費別途。手積み作業が発生する場合は追加料金となります。"
@@ -99,6 +120,7 @@ const SYSTEM_PROMPT = `あなたはChat LOGIの物流AIアシスタントです�
 - 10tトラック：120,000〜150,000円
 - 大型トラック：180,000円〜
 - 長距離（北海道・九州など）は×1.5、緊急便は×1.3、定期便は×0.85`;
+}
 
 // Parse proposal JSON from AI response
 function extractProposal(content: string) {
@@ -134,7 +156,7 @@ function stripTags(content: string): string {
 // Build message history for OpenAI
 function buildMessages(history: { sender: string; message: string }[], newUserMsg?: string) {
   const messages: { role: "user" | "assistant" | "system"; content: string }[] = [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: buildSystemPrompt() },
   ];
   for (const h of history) {
     messages.push({
@@ -201,9 +223,20 @@ router.post("/ai/start", requireAuth, async (req, res): Promise<void> => {
       status: "見積提示",
       vehicleType: proposal.vehicleType,
       deliveryMethod: proposal.deliveryMethod,
-      pickupDatetime: proposal.pickupDatetime,
-      deliveryDeadline: proposal.deliveryDatetime,
+      pickupAddress: proposal.pickupAddress ?? null,
+      pickupDatetime: proposal.pickupDatetime ?? null,
+      deliveryAddress: proposal.deliveryAddress ?? null,
+      deliveryDeadline: proposal.deliveryDatetime ?? null,
+      cargoType: proposal.cargoType ?? null,
+      cargoQuantity: proposal.cargoQuantity ?? null,
       customerPrice: proposal.estimatedPrice?.toString(),
+      notes: [
+        proposal.additionalWork ? `付帯作業: ${proposal.additionalWork}` : null,
+        proposal.highwayFee ? `高速代: ${proposal.highwayFee}` : null,
+        proposal.deliveryType ? `配送区分: ${proposal.deliveryType}` : null,
+        proposal.truckCount ? `台数: ${proposal.truckCount}台` : null,
+        proposal.notes ?? null,
+      ].filter(Boolean).join("\n") || null,
       updatedAt: new Date(),
     }).where(eq(shipmentsTable.id, shipment.id));
   }
@@ -277,9 +310,20 @@ router.post("/shipments/:id/conversations", requireAuth, async (req, res): Promi
       status: "見積提示",
       vehicleType: proposal.vehicleType,
       deliveryMethod: proposal.deliveryMethod,
-      pickupDatetime: proposal.pickupDatetime,
-      deliveryDeadline: proposal.deliveryDatetime,
+      pickupAddress: proposal.pickupAddress ?? null,
+      pickupDatetime: proposal.pickupDatetime ?? null,
+      deliveryAddress: proposal.deliveryAddress ?? null,
+      deliveryDeadline: proposal.deliveryDatetime ?? null,
+      cargoType: proposal.cargoType ?? null,
+      cargoQuantity: proposal.cargoQuantity ?? null,
       customerPrice: proposal.estimatedPrice?.toString(),
+      notes: [
+        proposal.additionalWork ? `付帯作業: ${proposal.additionalWork}` : null,
+        proposal.highwayFee ? `高速代: ${proposal.highwayFee}` : null,
+        proposal.deliveryType ? `配送区分: ${proposal.deliveryType}` : null,
+        proposal.truckCount ? `台数: ${proposal.truckCount}台` : null,
+        proposal.notes ?? null,
+      ].filter(Boolean).join("\n") || null,
       updatedAt: new Date(),
     }).where(eq(shipmentsTable.id, id));
   }
