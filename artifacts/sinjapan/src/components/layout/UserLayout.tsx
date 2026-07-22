@@ -23,7 +23,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
       {/* Top: logo + close (mobile) */}
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <Link href="/" onClick={() => setMobileOpen(false)}>
-          <img src="/logo.jpg" alt="Chat LOGI" className="h-5 w-auto" />
+          <img src="/logo.jpg" alt="Chat LOGI" className="h-7 w-auto" />
         </Link>
         <button className="md:hidden text-muted-foreground" onClick={() => setMobileOpen(false)}>
           <X className="h-5 w-5" />
