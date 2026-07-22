@@ -3,7 +3,7 @@ import { useRoute, Link } from 'wouter';
 import { useGetShipment, getGetShipmentQueryKey, useListConversations } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Circle, Loader2, CreditCard, MessageSquare, X, Bot, User } from 'lucide-react';
+import { Check, Circle, Loader2, CreditCard, MessageSquare, X, Bot, User, Truck, Phone } from 'lucide-react';
 
 const STATUS_FLOW = [
   '受付完了',
@@ -190,13 +190,6 @@ export default function Shipment() {
                     </div>
                   )}
 
-                  {shipment.assignedDriverName && (
-                    <div className="p-4 grid grid-cols-3 gap-4 bg-muted/20">
-                      <div className="text-sm text-muted-foreground">ドライバー</div>
-                      <div className="col-span-2 text-sm font-medium">{shipment.assignedDriverName}</div>
-                    </div>
-                  )}
-
                   <div className="p-4 grid grid-cols-3 gap-4">
                     <div className="text-sm text-muted-foreground">料金</div>
                     <div className="col-span-2 text-sm font-bold">
@@ -208,6 +201,54 @@ export default function Shipment() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* ドライバー情報カード — 配車確定以降に表示 */}
+            {currentIndex >= STATUS_FLOW.indexOf('配車確定') && (
+              (() => {
+                const s = shipment as any;
+                const carrier = s.carrier;
+                const driverName = shipment.assignedDriverName;
+                if (!driverName && !carrier?.companyName) return null;
+                return (
+                  <Card className="border-border shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-5 py-3.5 bg-foreground text-background">
+                      <Truck className="h-4 w-4" />
+                      <span className="font-semibold text-sm">担当ドライバー</span>
+                    </div>
+                    <CardContent className="p-0">
+                      <div className="divide-y divide-border/50">
+                        {carrier?.companyName && (
+                          <div className="p-4 grid grid-cols-3 gap-4">
+                            <div className="text-sm text-muted-foreground">運送会社</div>
+                            <div className="col-span-2 text-sm font-medium">{carrier.companyName}</div>
+                          </div>
+                        )}
+                        {driverName && (
+                          <div className="p-4 grid grid-cols-3 gap-4">
+                            <div className="text-sm text-muted-foreground">ドライバー名</div>
+                            <div className="col-span-2 text-sm font-medium">{driverName}</div>
+                          </div>
+                        )}
+                        {carrier?.phone && (
+                          <div className="p-4 grid grid-cols-3 gap-4">
+                            <div className="text-sm text-muted-foreground">連絡先</div>
+                            <div className="col-span-2">
+                              <a
+                                href={`tel:${carrier.phone}`}
+                                className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline"
+                              >
+                                <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                                {carrier.phone}
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()
+            )}
 
             {needsPayment && (
               <div className="rounded-xl bg-foreground text-background p-4 space-y-3">
