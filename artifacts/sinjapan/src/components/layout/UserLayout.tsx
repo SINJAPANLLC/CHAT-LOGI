@@ -48,22 +48,6 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             </button>
           </Link>
         )}
-        {user && (
-          <Link href="/invoices" onClick={() => setMobileOpen(false)}>
-            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-              <FileText className="h-4 w-4 shrink-0" />
-              請求書
-            </button>
-          </Link>
-        )}
-        {user && (
-          <Link href="/corporate-apply" onClick={() => setMobileOpen(false)}>
-            <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-              <Building2 className="h-4 w-4 shrink-0" />
-              請求書払い申請
-            </button>
-          </Link>
-        )}
         {user?.role === 'admin' && (
           <Link href="/admin" onClick={() => setMobileOpen(false)}>
             <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
@@ -78,6 +62,12 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
       <div className="px-2 pb-4 space-y-0.5">
         {user ? (
           <>
+            <Link href="/invoices" onClick={() => setMobileOpen(false)}>
+              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                <Building2 className="h-4 w-4 shrink-0" />
+                請求書払い申請
+              </button>
+            </Link>
             <Link href="/settings" onClick={() => setMobileOpen(false)}>
               <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
                 <Settings className="h-4 w-4 shrink-0" />
