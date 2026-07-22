@@ -1,120 +1,384 @@
-import React, { useEffect, useState } from 'react';
-import { FileText, Play, CheckCircle, Send } from 'lucide-react';
-import { customFetch } from '@workspace/api-client-react/custom-fetch';
+import React, { useState, useEffect } from 'react';
+import { Loader2, CheckCircle, XCircle, PauseCircle, ChevronRight, X, Save } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
-const STATUS: Record<string, { label: string; cls: string }> = {
-  draft:   { label: '下書き',   cls: 'bg-muted text-muted-foreground' },
-  sent:    { label: '送付済み', cls: 'bg-blue-100 text-blue-700' },
-  paid:    { label: '入金済み', cls: 'bg-green-100 text-green-700' },
-  overdue: { label: '期限超過', cls: 'bg-red-100 text-red-700' },
+const STATUS_META: Record<string, { label: string; cls: string }> = {
+  none:      { label: '未申請',   cls: 'bg-muted text-muted-foreground border-border' },
+  pending:   { label: '審査中',   cls: 'bg-amber-100 text-amber-800 border-amber-200' },
+  approved:  { label: '承認済',   cls: 'bg-green-100 text-green-800 border-green-200' },
+  rejected:  { label: '否決',     cls: 'bg-red-100 text-red-800 border-red-200' },
+  suspended: { label: '停止',     cls: 'bg-red-100 text-red-800 border-red-200' },
 };
 
-export default function AdminInvoices() {
-  const [invoices, setInvoices] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [genYear, setGenYear] = useState(new Date().getFullYear());
-  const [genMonth, setGenMonth] = useState(new Date().getMonth() + 1);
-  const [genResult, setGenResult] = useState<string | null>(null);
+const TABS = [
+  { key: 'all',      label: '全て' },
+  { key: 'pending',  label: '審査中' },
+  { key: 'approved', label: '承認済' },
+  { key: 'rejected', label: '否決' },
+  { key: 'suspended',label: '停止' },
+];
 
-  const reload = () => {
+const fmt = (n: number) => `¥ ${new Intl.NumberFormat('ja-JP').format(n)}`;
+
+function apiFetch(path: string, opts?: RequestInit) {
+  const token = localStorage.getItem('sinjapan_auth_token');
+  return fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...opts?.headers },
+  }).then(async r => {
+    if (!r.ok) throw new Error(await r.text());
+    return r.json();
+  });
+}
+
+export default function AdminInvoices() {
+  const { toast } = useToast();
+  const [applications, setApplications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState('all');
+  const [selected, setSelected] = useState<any>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // 承認モーダル用
+  const [approveForm, setApproveForm] = useState({ creditLimit: '', paymentTerms: 'Net30' });
+  const [showApproveForm, setShowApproveForm] = useState(false);
+
+  // 与信枠変更
+  const [editCreditLimit, setEditCreditLimit] = useState('');
+  const [editingCredit, setEditingCredit] = useState(false);
+
+  const reload = async () => {
     setLoading(true);
-    customFetch<any[]>('/api/admin/invoices').then(setInvoices).finally(() => setLoading(false));
+    try {
+      const data = await apiFetch('/api/admin/corporate');
+      setApplications(data);
+      // パネルを開いていたら最新に更新
+      if (selected) setSelected((prev: any) => data.find((u: any) => u.id === prev.id) ?? prev);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { reload(); }, []);
 
-  const fmt = (n: number) => new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(n);
+  // タブで絞り込み
+  const filtered = applications.filter(a => tab === 'all' || a.creditStatus === tab);
 
-  const generate = async () => {
-    setGenerating(true); setGenResult(null);
+  const counts: Record<string, number> = {};
+  for (const a of applications) counts[a.creditStatus] = (counts[a.creditStatus] || 0) + 1;
+
+  const action = async (path: string, body?: object) => {
+    setActionLoading(path);
     try {
-      const res = await customFetch<{ message: string }>('/api/admin/invoices/generate', {
-        method: 'POST',
-        body: JSON.stringify({ year: genYear, month: genMonth }),
-      });
-      setGenResult(res.message);
-      reload();
-    } catch (e: any) {
-      setGenResult(`エラー: ${e.message}`);
+      await apiFetch(path, { method: 'PATCH', body: JSON.stringify(body ?? {}) });
+      toast({ title: '更新しました' });
+      await reload();
+    } catch {
+      toast({ variant: 'destructive', title: '操作に失敗しました' });
     } finally {
-      setGenerating(false); }
+      setActionLoading(null);
+    }
   };
 
-  const invoiceAction = async (id: number, action: 'send' | 'paid') => {
-    setActionLoading(id);
-    try {
-      await customFetch(`/api/admin/invoices/${id}/${action}`, { method: 'PATCH', body: JSON.stringify({}) });
-      reload();
-    } finally { setActionLoading(null); }
+  const handleApprove = async () => {
+    if (!selected || !approveForm.creditLimit) return;
+    await action(`/api/admin/corporate/${selected.id}/approve`, {
+      creditLimit: Number(approveForm.creditLimit),
+      paymentTerms: approveForm.paymentTerms,
+    });
+    setShowApproveForm(false);
   };
 
-  if (loading) return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 border-2 border-foreground border-t-transparent rounded-full animate-spin" /></div>;
+  const handleUpdateCredit = async () => {
+    if (!selected || !editCreditLimit) return;
+    await action(`/api/admin/corporate/${selected.id}/credit-limit`, { creditLimit: Number(editCreditLimit) });
+    setEditingCredit(false);
+  };
+
+  const openPanel = (app: any) => {
+    setSelected(app);
+    setShowApproveForm(false);
+    setEditingCredit(false);
+    setApproveForm({ creditLimit: '', paymentTerms: app.paymentTerms || 'Net30' });
+    setEditCreditLimit(String(app.creditLimit || ''));
+  };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3">
-        <FileText className="h-6 w-6" />
-        <h1 className="text-2xl font-bold tracking-tight">請求書管理</h1>
-      </div>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold tracking-tight">請求書払い申請</h1>
 
-      <div className="rounded-xl border border-border p-5 space-y-4">
-        <p className="font-semibold text-sm">月次請求書を生成</p>
-        <div className="flex items-center gap-2">
-          <select value={genYear} onChange={e => setGenYear(Number(e.target.value))}
-            className="px-3 py-2 border border-border rounded-lg text-sm bg-background focus:outline-none">
-            {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}年</option>)}
-          </select>
-          <select value={genMonth} onChange={e => setGenMonth(Number(e.target.value))}
-            className="px-3 py-2 border border-border rounded-lg text-sm bg-background focus:outline-none">
-            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => <option key={m} value={m}>{m}月</option>)}
-          </select>
-          <button onClick={generate} disabled={generating}
-            className="flex items-center gap-1.5 px-4 py-2 bg-foreground text-background text-sm rounded-lg hover:opacity-90 disabled:opacity-40">
-            <Play className="h-4 w-4" />{generating ? '生成中…' : '生成する'}
+      {/* タブ */}
+      <div className="flex gap-1 border-b border-border">
+        {TABS.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors relative ${
+              tab === t.key
+                ? 'text-foreground border-b-2 border-foreground -mb-px'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t.label}
+            {t.key !== 'all' && (counts[t.key] ?? 0) > 0 && (
+              <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
+                t.key === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-muted text-muted-foreground'
+              }`}>
+                {counts[t.key]}
+              </span>
+            )}
           </button>
-        </div>
-        {genResult && <p className="text-sm text-muted-foreground">{genResult}</p>}
+        ))}
       </div>
 
-      {invoices.length === 0 ? (
-        <div className="text-center py-10 text-muted-foreground text-sm">請求書はまだありません</div>
-      ) : (
-        <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
-          {invoices.map(inv => {
-            const st = STATUS[inv.status] ?? STATUS.draft;
-            const isLoading = actionLoading === inv.id;
-            return (
-              <div key={inv.id} className="flex items-center px-5 py-4 gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{inv.invoiceNumber}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {inv.companyName ?? inv.userName} · {inv.periodStart} 〜 {inv.periodEnd}
-                    {inv.dueDate && <span className="ml-2">期限: {inv.dueDate}</span>}
-                  </p>
+      <div className="flex gap-6">
+        {/* テーブル */}
+        <div className={`flex-1 rounded-xl border border-border shadow-sm overflow-hidden ${selected ? 'hidden lg:block' : ''}`}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-muted/40 border-b border-border">
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">申請者</th>
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">会社名</th>
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">法人番号</th>
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">ステータス</th>
+                <th className="px-5 py-3 text-right font-medium text-muted-foreground">与信枠</th>
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">支払いサイト</th>
+                <th className="px-5 py-3 text-left font-medium text-muted-foreground">申請日</th>
+                <th className="px-5 py-3 w-8"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border bg-card">
+              {loading ? (
+                <tr><td colSpan={8} className="py-16 text-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" /></td></tr>
+              ) : !filtered.length ? (
+                <tr><td colSpan={8} className="py-16 text-center text-muted-foreground text-sm">申請はありません</td></tr>
+              ) : filtered.map(app => {
+                const st = STATUS_META[app.creditStatus] ?? STATUS_META.none;
+                return (
+                  <tr
+                    key={app.id}
+                    onClick={() => openPanel(app)}
+                    className={`cursor-pointer hover:bg-muted/30 transition-colors ${selected?.id === app.id ? 'bg-muted/40' : ''}`}
+                  >
+                    <td className="px-5 py-3.5">
+                      <div className="font-medium">{app.name}</div>
+                      <div className="text-xs text-muted-foreground">{app.email}</div>
+                    </td>
+                    <td className="px-5 py-3.5 font-medium">{app.companyName || '—'}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground text-xs font-mono">{app.corporateNumber || '—'}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${st.cls}`}>
+                        {st.label}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right font-medium">
+                      {app.creditLimit > 0 ? fmt(app.creditLimit) : '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-muted-foreground text-xs">{app.paymentTerms || '—'}</td>
+                    <td className="px-5 py-3.5 text-muted-foreground text-xs">
+                      {format(new Date(app.createdAt), 'yyyy/MM/dd')}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* 右パネル */}
+        {selected && (
+          <div className="w-full lg:w-80 shrink-0 bg-card border border-border rounded-xl shadow-sm flex flex-col max-h-[calc(100vh-12rem)] overflow-hidden">
+            {/* ヘッダー */}
+            <div className="flex items-start justify-between px-5 py-4 border-b border-border shrink-0">
+              <div>
+                <div className="font-semibold">{selected.name}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{selected.email}</div>
+                {selected.companyName && <div className="text-xs text-muted-foreground">{selected.companyName}</div>}
+              </div>
+              <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground mt-0.5">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto">
+              {/* ステータス・基本情報 */}
+              <div className="px-5 py-4 space-y-3 border-b border-border">
+                {(() => {
+                  const st = STATUS_META[selected.creditStatus] ?? STATUS_META.none;
+                  return (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">ステータス</span>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold border ${st.cls}`}>{st.label}</span>
+                    </div>
+                  );
+                })()}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">法人番号</span>
+                  <span className="text-sm font-mono">{selected.corporateNumber || '—'}</span>
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.cls}`}>{st.label}</span>
-                <span className="font-bold text-sm">{fmt(inv.totalAmount)}</span>
-                <div className="flex gap-2">
-                  {inv.status === 'draft' && (
-                    <button disabled={isLoading} onClick={() => invoiceAction(inv.id, 'send')}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs border border-border rounded-lg hover:bg-muted disabled:opacity-40">
-                      <Send className="h-3 w-3" />送付済みに
-                    </button>
-                  )}
-                  {(inv.status === 'sent' || inv.status === 'overdue') && (
-                    <button disabled={isLoading} onClick={() => invoiceAction(inv.id, 'paid')}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-40">
-                      <CheckCircle className="h-3 w-3" />入金済みに
-                    </button>
-                  )}
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">申請日</span>
+                  <span className="text-sm">{format(new Date(selected.createdAt), 'yyyy/MM/dd')}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">支払いサイト</span>
+                  <span className="text-sm">{selected.paymentTerms || '—'}</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              {/* 与信情報 */}
+              <div className="px-5 py-4 space-y-3 border-b border-border">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">与信情報</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">与信枠</span>
+                  <span className="text-sm font-semibold">{selected.creditLimit > 0 ? fmt(selected.creditLimit) : '—'}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">使用額</span>
+                  <span className="text-sm">{selected.creditUsed > 0 ? fmt(selected.creditUsed) : '—'}</span>
+                </div>
+                {selected.creditLimit > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>使用率</span>
+                      <span>{Math.round((selected.creditUsed / selected.creditLimit) * 100)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-foreground rounded-full"
+                        style={{ width: `${Math.min(100, Math.round((selected.creditUsed / selected.creditLimit) * 100))}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* 与信枠変更（承認済のみ） */}
+                {selected.creditStatus === 'approved' && (
+                  editingCredit ? (
+                    <div className="space-y-2 pt-1">
+                      <Input
+                        type="number"
+                        value={editCreditLimit}
+                        onChange={e => setEditCreditLimit(e.target.value)}
+                        placeholder="与信枠（円）"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => setEditingCredit(false)} className="flex-1">キャンセル</Button>
+                        <Button size="sm" onClick={handleUpdateCredit} disabled={!!actionLoading} className="flex-1">
+                          {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <><Save className="h-3.5 w-3.5 mr-1" />更新</>}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button size="sm" variant="outline" className="w-full mt-1" onClick={() => setEditingCredit(true)}>
+                      与信枠を変更
+                    </Button>
+                  )
+                )}
+              </div>
+
+              {/* アクション */}
+              <div className="px-5 py-4 space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">操作</p>
+
+                {/* 審査中 → 承認フォーム */}
+                {selected.creditStatus === 'pending' && (
+                  <>
+                    {!showApproveForm ? (
+                      <Button
+                        className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
+                        onClick={() => setShowApproveForm(true)}
+                      >
+                        <CheckCircle className="h-4 w-4" />承認する
+                      </Button>
+                    ) : (
+                      <div className="space-y-3 p-4 bg-muted/30 rounded-xl border border-border">
+                        <p className="text-sm font-medium">承認設定</p>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">与信枠（円） *</Label>
+                          <Input
+                            type="number"
+                            placeholder="例: 1000000"
+                            value={approveForm.creditLimit}
+                            onChange={e => setApproveForm(p => ({ ...p, creditLimit: e.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">支払いサイト</Label>
+                          <Input
+                            placeholder="例: 月末締め翌月末払い"
+                            value={approveForm.paymentTerms}
+                            onChange={e => setApproveForm(p => ({ ...p, paymentTerms: e.target.value }))}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="ghost" className="flex-1" onClick={() => setShowApproveForm(false)}>キャンセル</Button>
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                            onClick={handleApprove}
+                            disabled={!approveForm.creditLimit || !!actionLoading}
+                          >
+                            {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '確定'}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                      onClick={() => action(`/api/admin/corporate/${selected.id}/reject`)}
+                      disabled={!!actionLoading}
+                    >
+                      <XCircle className="h-4 w-4" />否決する
+                    </Button>
+                  </>
+                )}
+
+                {/* 承認済 → 停止 */}
+                {selected.creditStatus === 'approved' && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={() => action(`/api/admin/corporate/${selected.id}/suspend`)}
+                    disabled={!!actionLoading}
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PauseCircle className="h-4 w-4" />}
+                    停止する
+                  </Button>
+                )}
+
+                {/* 否決/停止 → 再審査へ */}
+                {(selected.creditStatus === 'rejected' || selected.creditStatus === 'suspended') && (
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={() => action(`/api/admin/corporate/${selected.id}/approve`, {
+                      creditLimit: selected.creditLimit || 1000000,
+                      paymentTerms: selected.paymentTerms || 'Net30',
+                    })}
+                    disabled={!!actionLoading}
+                  >
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                    承認に戻す
+                  </Button>
+                )}
+
+                {selected.creditStatus === 'none' && (
+                  <p className="text-sm text-muted-foreground text-center py-2">未申請のユーザーです</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
