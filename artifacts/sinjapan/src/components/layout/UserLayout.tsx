@@ -98,16 +98,20 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 
+  const isLoggedIn = !!user;
+
   return (
     <div className="min-h-[100dvh] flex bg-background font-sans text-foreground">
 
-      {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-56 border-r border-border/50 shrink-0 sticky top-0 h-[100dvh] overflow-y-auto">
-        <NavContent />
-      </aside>
+      {/* Desktop sidebar — logged in only */}
+      {isLoggedIn && (
+        <aside className="hidden md:flex flex-col w-56 border-r border-border/50 shrink-0 sticky top-0 h-[100dvh] overflow-y-auto">
+          <NavContent />
+        </aside>
+      )}
 
-      {/* Mobile sidebar overlay */}
-      {mobileOpen && (
+      {/* Mobile sidebar overlay — logged in only */}
+      {isLoggedIn && mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="w-64 bg-background border-r border-border h-full shadow-xl overflow-y-auto">
             <NavContent />
@@ -121,20 +125,29 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
 
         {/* Top bar */}
         <header className="flex items-center h-12 px-4 border-b border-border/40">
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden mr-3 text-muted-foreground hover:text-foreground"
-            onClick={() => setMobileOpen(true)}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          {/* Mobile hamburger — logged in only */}
+          {isLoggedIn && (
+            <button
+              className="md:hidden mr-3 text-muted-foreground hover:text-foreground"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          )}
 
-          {/* Brand (desktop: empty space since sidebar has logo; mobile: logo) */}
-          <span className="md:hidden font-semibold text-sm">Chat LOGI</span>
+          {/* Logo — shown when no sidebar (not logged in) or on mobile */}
+          <Link href="/">
+            <img
+              src="/logo.jpg"
+              alt="Chat LOGI"
+              className={`h-5 w-auto ${isLoggedIn ? 'md:hidden' : ''}`}
+            />
+          </Link>
+
           <div className="flex-1" />
 
-          {/* Auth buttons — only when not logged in */}
-          {!user && !hasToken && (
+          {/* Auth buttons — not logged in only */}
+          {!isLoggedIn && !hasToken && (
             <div className="flex items-center gap-2">
               <Link href="/login">
                 <button className="text-sm font-medium px-4 py-1.5 rounded-full hover:bg-muted transition-colors">
@@ -143,7 +156,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
               </Link>
               <Link href="/register">
                 <button className="text-sm font-medium px-4 py-1.5 rounded-full bg-foreground text-background hover:opacity-90 transition-opacity">
-                  無料でサインアップ
+                  新規登録
                 </button>
               </Link>
             </div>
