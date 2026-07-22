@@ -7,7 +7,6 @@ import { usersTable } from "./users";
 export const notificationsTable = pgTable("notifications", {
   id: serial("id").primaryKey(),
   shipmentId: integer("shipment_id")
-    .notNull()
     .references(() => shipmentsTable.id),
   userId: integer("user_id")
     .notNull()
