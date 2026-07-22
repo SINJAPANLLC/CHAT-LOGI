@@ -64,17 +64,22 @@ function distanceTier(km: number): DistanceTier {
   return 'xlong';
 }
 
-// ── 基本料（円）車格 × 距離帯 ───────────────────────────────────────────────
+// ── Chat LOGIのマージン率 ──────────────────────────────────────────────────
+// customerPrice = carrierCost ÷ (1 - MARGIN)
+const MARGIN = 0.10;
+
+// ── 庸車相場（円/台）車格 × 距離帯 ─────────────────────────────────────────
+// ※ これは庸車への支払い目安。顧客価格はここに10%マージンを乗せて算出。
 
 type VehicleSize = '軽貨物' | '1t' | '2t' | '4t' | '10t' | '大型';
 
 const BASE_PRICE: Record<VehicleSize, Record<DistanceTier, number>> = {
-  軽貨物: { short: 15000, mid: 22000, long: 30000, xlong: 40000 },
-  '1t':   { short: 25000, mid: 35000, long: 48000, xlong: 65000 },
-  '2t':   { short: 40000, mid: 55000, long: 75000, xlong: 100000 },
-  '4t':   { short: 70000, mid: 90000, long: 120000, xlong: 160000 },
-  '10t':  { short: 120000, mid: 150000, long: 200000, xlong: 260000 },
-  大型:   { short: 180000, mid: 220000, long: 280000, xlong: 360000 },
+  軽貨物: { short: 10000, mid: 16000, long: 22000, xlong: 32000 },
+  '1t':   { short: 18000, mid: 26000, long: 36000, xlong: 50000 },
+  '2t':   { short: 28000, mid: 40000, long: 55000, xlong: 75000 },
+  '4t':   { short: 45000, mid: 62000, long: 75000, xlong: 105000 },
+  '10t':  { short: 80000, mid: 105000, long: 140000, xlong: 190000 },
+  大型:   { short: 120000, mid: 160000, long: 210000, xlong: 280000 },
 };
 
 // ── ボディタイプ割増率 ────────────────────────────────────────────────────
@@ -186,13 +191,16 @@ export function calcPrice(input: PricingInput): PricingResult {
   // 高速代（台数分）
   const highwayFeePerTruck = highwayUse ? estimateHighwayFee(km) : 0;
 
-  // 合計（1台あたり → 台数倍）
-  const perTruck = Math.ceil(basePerTruck * bodyRate * deliveryRate / 100) * 100
+  // 庸車コスト（1台あたり）= 庸車相場 × ボディ割増 × 配送区分 + 付帯作業 + 高速代
+  const carrierPerTruck = Math.ceil(basePerTruck * bodyRate * deliveryRate / 100) * 100
     + additionalFeePerTruck
     + highwayFeePerTruck;
 
-  const customerPrice = perTruck * truckCount;
-  const carrierCost = Math.ceil(customerPrice * 0.70 / 100) * 100;
+  // 庸車合計（台数分）
+  const carrierCost = carrierPerTruck * truckCount;
+
+  // 顧客価格 = 庸車コスト ÷ (1 - マージン率)、100円単位切り上げ
+  const customerPrice = Math.ceil(carrierCost / (1 - MARGIN) / 100) * 100;
   const grossProfit = customerPrice - carrierCost;
 
   return {
