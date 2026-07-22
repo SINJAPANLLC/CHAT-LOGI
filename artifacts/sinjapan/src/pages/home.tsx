@@ -7,9 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 const DRAFT_KEY = 'sinjapan_draft_message';
 
 const EXAMPLES = [
-  "明日の午後、東京から大阪までパレット3枚を運びたいです。",
-  "来週水曜、横浜の倉庫から千葉の店舗へ段ボール50箱を配送予定です。",
-  "急ぎです。今日の夕方までに埼玉から川崎へ建築資材（約2t）を届けてください。"
+  "明日の午後、東京から大阪までパレットを20枚運びたい。"
 ];
 
 export default function Home() {
