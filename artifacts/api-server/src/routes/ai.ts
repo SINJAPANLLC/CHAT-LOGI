@@ -12,29 +12,37 @@ function parseId(raw: string | string[]): number {
   return parseInt(s, 10);
 }
 
-const SYSTEM_PROMPT = `あなたはSINJAPAN（シンジャパン）の物流AIアシスタントです。
-日本語で丁寧かつ簡潔に応答してください。
+const SYSTEM_PROMPT = `あなたはChat LOGIの物流AIアシスタントです。日本語で簡潔に応答してください。
 
-あなたの役割：
-- 荷主（配送を依頼したいお客様）から配送の依頼内容をヒアリングする
-- 必要な情報を自然な会話形式で収集する
-- 情報が揃ったら最適な配送プランを提案する
+## 最重要ルール
+ユーザーのメッセージから読み取れる情報を最大限活用し、**最小限の質問（最大1ターン）でプランを提案**すること。
+目標：ユーザーの入力 → 不足情報を1問だけ確認（またはそのまま） → 即プラン提案
 
-ヒアリングが必要な情報（優先順）：
-1. 集荷先の住所（都道府県・市区町村レベルでOK）
-2. 納品先の住所（都道府県・市区町村レベルでOK）
-3. 荷物の種類（例：機械部品、食品、家電など）
-4. 荷物の数量・重量（例：パレット8枚、約2800kg）
-5. ご希望の集荷日時
-6. 納品期限（あれば）
-7. 集荷先・納品先にフォークリフトはあるか（大型荷物の場合）
+## プラン提案に必要な情報（これだけ揃えばOK）
+- 集荷場所（都道府県レベルでOK）
+- 納品場所（都道府県レベルでOK）
+- 荷物の概要（種類・量・重量のどれか1つあればOK）
+- 希望日時（「明日」「来週」などの曖昧な表現でもOK）
 
-ヒアリングのルール：
-- 一度に1〜2個の質問に留める（多すぎると煩わしい）
-- お客様が既に答えた情報は再度聞かない
-- 情報が揃ったら、以下のJSON形式でプランを提案する：
+## 質問ルール（厳守）
+- **1ターンで質問できるのは1つだけ**
+- 上記4項目のうち1つでも欠けている場合のみ質問する
+- フォークリフトの有無は**聞かない**（なしと仮定してプランを立てる）
+- 荷物の細かい寸法・正確な重量は**聞かない**（概算でプランを立てる）
+- 既に答えた情報は絶対に再度聞かない
 
-提案フォーマット（情報が全て揃ったら必ず以下のJSON形式を含めること）：
+## 選択肢ボタン（必須）
+質問する場合は必ず以下の形式で選択肢を出力すること：
+<options>["選択肢A", "選択肢B", "選択肢C", "その他"]</options>
+
+日時を聞く場合の選択肢例：
+<options>["今日中", "明日", "今週中", "来週以降", "日程未定"]</options>
+
+荷物サイズを聞く場合の選択肢例：
+<options>["小型（100kg未満）", "中型（100〜500kg）", "大型（500kg以上）", "わからない"]</options>
+
+## プラン提案フォーマット（情報が揃い次第、必ず出力）
+提案の際は簡潔な説明文の後に以下のJSONを含めること：
 <proposal>
 {
   "vehicleType": "4tウイング",
@@ -42,22 +50,19 @@ const SYSTEM_PROMPT = `あなたはSINJAPAN（シンジャパン）の物流AI�
   "pickupDatetime": "明日 9:00〜11:00",
   "deliveryDatetime": "翌日午前中",
   "estimatedPrice": 85000,
-  "reason": "荷物の重量と距離を考慮し、4tウイングのチャーター便が最適です。",
-  "notes": "フォークリフトが両拠点にあるため、積み降ろしはスムーズに行えます。"
+  "reason": "荷物量と距離を考慮した最適プランです。",
+  "notes": "フォークリフトなしの場合は手積み対応となります。"
 }
 </proposal>
 
-提案後は「この内容でよろしいですか？」と確認する。
-
-料金の目安（参考）：
+## 料金の目安（内部参照用）
 - 軽貨物: 15,000〜25,000円
 - 1tトラック: 25,000〜35,000円
 - 2tトラック: 40,000〜55,000円
 - 4tトラック: 70,000〜90,000円
 - 10tトラック: 120,000〜150,000円
 - 大型トラック: 180,000円〜
-- 長距離（北海道・九州など）は上記の1.5倍程度
-- 緊急便は上記の1.3倍程度`;
+- 長距離（北海道・九州など）は1.5倍、緊急便は1.3倍`;
 
 // Parse proposal JSON from AI response
 function extractProposal(content: string) {
@@ -68,6 +73,26 @@ function extractProposal(content: string) {
   } catch {
     return null;
   }
+}
+
+// Parse quick-reply options from AI response
+function extractOptions(content: string): string[] | null {
+  const match = content.match(/<options>(\[[\s\S]*?\])<\/options>/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[1].trim());
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+// Strip special tags from visible message
+function stripTags(content: string): string {
+  return content
+    .replace(/<proposal>[\s\S]*?<\/proposal>/g, "")
+    .replace(/<options>[\s\S]*?<\/options>/g, "")
+    .trim();
 }
 
 // Build message history for OpenAI
@@ -123,15 +148,15 @@ router.post("/ai/start", requireAuth, async (req, res): Promise<void> => {
 
   const aiMessage = completion.choices[0]?.message?.content ?? "申し訳ありません。エラーが発生しました。";
   const proposal = extractProposal(aiMessage);
-  // Strip the <proposal> tag from the visible message
-  const visibleMessage = aiMessage.replace(/<proposal>[\s\S]*?<\/proposal>/g, "").trim();
+  const options = extractOptions(aiMessage);
+  const visibleMessage = stripTags(aiMessage);
 
   // Save AI response
   await db.insert(conversationsTable).values({
     shipmentId: shipment.id,
     sender: "ai",
     message: visibleMessage,
-    structuredData: proposal ? JSON.stringify(proposal) : null,
+    structuredData: JSON.stringify({ proposal: proposal || null, options: options || [] }),
   });
 
   // Update shipment if proposal ready
@@ -152,7 +177,7 @@ router.post("/ai/start", requireAuth, async (req, res): Promise<void> => {
     shipmentId: shipment.id,
     isComplete: !!proposal,
     proposal: proposal || null,
-    extractedData: "{}",
+    options: options || [],
   });
 });
 
@@ -199,14 +224,15 @@ router.post("/shipments/:id/conversations", requireAuth, async (req, res): Promi
 
   const aiMessage = completion.choices[0]?.message?.content ?? "申し訳ありません。エラーが発生しました。";
   const proposal = extractProposal(aiMessage);
-  const visibleMessage = aiMessage.replace(/<proposal>[\s\S]*?<\/proposal>/g, "").trim();
+  const options = extractOptions(aiMessage);
+  const visibleMessage = stripTags(aiMessage);
 
   // Save AI response
   await db.insert(conversationsTable).values({
     shipmentId: id,
     sender: "ai",
     message: visibleMessage,
-    structuredData: proposal ? JSON.stringify(proposal) : null,
+    structuredData: JSON.stringify({ proposal: proposal || null, options: options || [] }),
   });
 
   // Update shipment with proposal if ready
@@ -227,7 +253,7 @@ router.post("/shipments/:id/conversations", requireAuth, async (req, res): Promi
     shipmentId: id,
     isComplete: !!proposal,
     proposal: proposal || null,
-    extractedData: "{}",
+    options: options || [],
   });
 });
 
