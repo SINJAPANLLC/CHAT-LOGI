@@ -205,7 +205,7 @@ export default function Payment() {
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    法人口座の審査が必要です →{' '}
+                    法人の審査が必要です →{' '}
                     <a href="/corporate-apply" className="underline text-foreground">申請する</a>
                   </p>
                 )}
