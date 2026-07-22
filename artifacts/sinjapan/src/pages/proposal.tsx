@@ -50,8 +50,11 @@ export default function Proposal() {
     setLocation(`/shipment/${shipmentId}`);
   };
 
-  const handleModify = async () => {
-    await updateStatus.mutateAsync({ id: shipmentId, data: { status: 'ヒアリング中' } });
+  const handleModify = () => {
+    // Set flag so chat page skips the "redirect to proposal" effect on first load
+    sessionStorage.setItem(`modifying_${shipmentId}`, '1');
+    // Fire status reset in background (no await needed)
+    updateStatus.mutate({ id: shipmentId, data: { status: 'ヒアリング中' } });
     setLocation(`/chat/${shipmentId}`);
   };
 

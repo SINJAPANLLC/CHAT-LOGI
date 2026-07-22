@@ -46,11 +46,19 @@ export default function Chat() {
     el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   }, [message]);
 
-  // Navigate to proposal if status changes
+  // Navigate to proposal if status changes — but skip if we just came from "条件を変更する"
   useEffect(() => {
-    if (shipment?.status === '見積提示' || shipment?.status === '顧客承認' || shipment?.status === '手配中') {
-      setLocation(`/proposal/${shipmentId}`);
+    if (!shipment) return;
+    const isComplete = shipment.status === '見積提示' || shipment.status === '顧客承認' || shipment.status === '手配中';
+    if (!isComplete) return;
+
+    const key = `modifying_${shipmentId}`;
+    if (sessionStorage.getItem(key)) {
+      sessionStorage.removeItem(key);
+      return; // skip redirect once; status reset is happening in background
     }
+
+    setLocation(`/proposal/${shipmentId}`);
   }, [shipment?.status, shipmentId, setLocation]);
 
   const doSend = async (text: string) => {
