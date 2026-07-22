@@ -7,6 +7,7 @@ const router: IRouter = Router();
 
 const CONFIRMED = ['配車確定', '集荷完了', '配送中', '納品完了', '請求完了'];
 const confirmedSql = CONFIRMED.map(s => `'${s}'`).join(',');
+const inConfirmed = `status = ANY(ARRAY[${confirmedSql}]::shipment_status[])`;
 
 // GET /admin/finance/pl?year=2026
 router.get("/admin/finance/pl", requireAdmin, async (req, res): Promise<void> => {
@@ -14,12 +15,12 @@ router.get("/admin/finance/pl", requireAdmin, async (req, res): Promise<void> =>
 
   const rows = await db.select({
     month: sql<string>`TO_CHAR(created_at, 'YYYY-MM')`,
-    revenue: sql<string>`SUM(CASE WHEN status = ANY(ARRAY[${sql.raw(confirmedSql)}]) THEN COALESCE(customer_price::numeric,0) ELSE 0 END)`,
-    cost:    sql<string>`SUM(CASE WHEN status = ANY(ARRAY[${sql.raw(confirmedSql)}]) THEN COALESCE(carrier_cost::numeric,0) ELSE 0 END)`,
-    cardRevenue:    sql<string>`SUM(CASE WHEN status = ANY(ARRAY[${sql.raw(confirmedSql)}]) AND payment_method='card'    THEN COALESCE(customer_price::numeric,0) ELSE 0 END)`,
-    invoiceRevenue: sql<string>`SUM(CASE WHEN status = ANY(ARRAY[${sql.raw(confirmedSql)}]) AND payment_method='invoice' THEN COALESCE(customer_price::numeric,0) ELSE 0 END)`,
+    revenue: sql<string>`SUM(CASE WHEN ${sql.raw(inConfirmed)} THEN COALESCE(customer_price::numeric,0) ELSE 0 END)`,
+    cost:    sql<string>`SUM(CASE WHEN ${sql.raw(inConfirmed)} THEN COALESCE(carrier_cost::numeric,0) ELSE 0 END)`,
+    cardRevenue:    sql<string>`SUM(CASE WHEN ${sql.raw(inConfirmed)} AND payment_method='card'    THEN COALESCE(customer_price::numeric,0) ELSE 0 END)`,
+    invoiceRevenue: sql<string>`SUM(CASE WHEN ${sql.raw(inConfirmed)} AND payment_method='invoice' THEN COALESCE(customer_price::numeric,0) ELSE 0 END)`,
     totalShipments:     sql<string>`COUNT(*)`,
-    confirmedShipments: sql<string>`COUNT(CASE WHEN status = ANY(ARRAY[${sql.raw(confirmedSql)}]) THEN 1 END)`,
+    confirmedShipments: sql<string>`COUNT(CASE WHEN ${sql.raw(inConfirmed)} THEN 1 END)`,
   }).from(shipmentsTable)
     .where(sql`EXTRACT(YEAR FROM created_at) = ${year}`)
     .groupBy(sql`TO_CHAR(created_at, 'YYYY-MM')`)
