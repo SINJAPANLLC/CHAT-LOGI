@@ -13,6 +13,7 @@ import squareRouter from "./square";
 import corporateRouter from "./corporate";
 import invoicesRouter from "./invoices";
 import configRouter from "./config";
+import financeRouter from "./finance";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(squareRouter);
 router.use(corporateRouter);
 router.use(invoicesRouter);
 router.use(configRouter);
+router.use(financeRouter);
 
 export default router;
