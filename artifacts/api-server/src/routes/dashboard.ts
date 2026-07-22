@@ -13,6 +13,8 @@ router.get("/dashboard/stats", requireAdmin, async (_req, res): Promise<void> =>
   const allShipments = await db.select().from(shipmentsTable);
   const todayShipments = allShipments.filter(s => s.createdAt >= today);
 
+  const CONFIRMED_STATUSES = ["配車確定", "集荷完了", "配送中", "納品完了", "請求完了"];
+
   const statusCounts: Record<string, number> = {};
   let totalRevenue = 0;
   let totalCost = 0;
@@ -20,9 +22,11 @@ router.get("/dashboard/stats", requireAdmin, async (_req, res): Promise<void> =>
 
   for (const s of allShipments) {
     statusCounts[s.status] = (statusCounts[s.status] || 0) + 1;
-    if (s.customerPrice) totalRevenue += Number(s.customerPrice);
-    if (s.carrierCost) totalCost += Number(s.carrierCost);
-    if (s.grossProfit) grossProfit += Number(s.grossProfit);
+    if (CONFIRMED_STATUSES.includes(s.status)) {
+      if (s.customerPrice) totalRevenue += Number(s.customerPrice);
+      if (s.carrierCost) totalCost += Number(s.carrierCost);
+      if (s.grossProfit) grossProfit += Number(s.grossProfit);
+    }
   }
 
   const avgProfitRate = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
