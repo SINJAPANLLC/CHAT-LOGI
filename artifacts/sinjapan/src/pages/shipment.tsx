@@ -139,23 +139,61 @@ export default function Shipment() {
                   <div className="p-4 grid grid-cols-3 gap-4">
                     <div className="text-sm text-muted-foreground">荷物</div>
                     <div className="col-span-2 text-sm">
-                      {shipment.cargoType} ({shipment.cargoQuantity})
+                      {[shipment.cargoType, shipment.cargoQuantity].filter(Boolean).join(' / ') || '—'}
                     </div>
                   </div>
+
+                  <div className="p-4 grid grid-cols-3 gap-4">
+                    <div className="text-sm text-muted-foreground">車両</div>
+                    <div className="col-span-2 text-sm">
+                      {(() => {
+                        const s = shipment as any;
+                        const label = [s.vehicleSize, s.vehicleBodyType].filter(Boolean).join(' ') || shipment.vehicleType || '—';
+                        const count = s.truckCount && s.truckCount > 1 ? ` × ${s.truckCount}台` : '';
+                        return label + count;
+                      })()}
+                    </div>
+                  </div>
+
+                  <div className="p-4 grid grid-cols-3 gap-4">
+                    <div className="text-sm text-muted-foreground">配送区分</div>
+                    <div className="col-span-2 text-sm">
+                      {(shipment as any).deliveryType || shipment.deliveryMethod || '—'}
+                    </div>
+                  </div>
+
+                  {(shipment as any).additionalWork && (shipment as any).additionalWork !== '不要' && (
+                    <div className="p-4 grid grid-cols-3 gap-4">
+                      <div className="text-sm text-muted-foreground">付帯作業</div>
+                      <div className="col-span-2 text-sm">{(shipment as any).additionalWork}</div>
+                    </div>
+                  )}
+
+                  {(shipment as any).highwayUse && (
+                    <div className="p-4 grid grid-cols-3 gap-4">
+                      <div className="text-sm text-muted-foreground">高速代</div>
+                      <div className="col-span-2 text-sm">{(shipment as any).highwayUse}（実費別途）</div>
+                    </div>
+                  )}
+
+                  {shipment.notes && (
+                    <div className="p-4 grid grid-cols-3 gap-4">
+                      <div className="text-sm text-muted-foreground">備考</div>
+                      <div className="col-span-2 text-sm whitespace-pre-wrap text-muted-foreground">{shipment.notes}</div>
+                    </div>
+                  )}
 
                   {shipment.assignedDriverName && (
                     <div className="p-4 grid grid-cols-3 gap-4 bg-muted/20">
                       <div className="text-sm text-muted-foreground">ドライバー</div>
-                      <div className="col-span-2 text-sm font-medium">
-                        {shipment.assignedDriverName}
-                      </div>
+                      <div className="col-span-2 text-sm font-medium">{shipment.assignedDriverName}</div>
                     </div>
                   )}
 
                   <div className="p-4 grid grid-cols-3 gap-4">
                     <div className="text-sm text-muted-foreground">料金</div>
                     <div className="col-span-2 text-sm font-bold">
-                      {new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(shipment.customerPrice || 0)}
+                      {new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(Number(shipment.customerPrice) || 0)}
                       <span className="text-xs font-normal text-muted-foreground ml-1">(税別)</span>
                     </div>
                   </div>
