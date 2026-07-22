@@ -145,7 +145,6 @@ export default function AdminShipmentDetail() {
               {statuses.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Button variant="outline">通知を送信</Button>
         </div>
       </div>
 
@@ -254,7 +253,7 @@ export default function AdminShipmentDetail() {
           {/* 指示書送付ボタン */}
           <button
             onClick={() => setShowInstruction(true)}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-4 text-sm font-medium text-muted-foreground hover:border-foreground hover:text-foreground transition-colors"
+            className="w-full flex items-center justify-center gap-2 rounded-xl bg-foreground text-background py-4 text-sm font-medium hover:opacity-80 transition-opacity"
           >
             <FileText className="h-4 w-4" />
             指示書を送付する
