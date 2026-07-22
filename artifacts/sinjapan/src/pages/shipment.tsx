@@ -105,31 +105,10 @@ export default function Shipment() {
               })}
             </div>
 
-            {needsPayment && (
-              <div className="mt-8 rounded-xl bg-foreground text-background p-4 space-y-3">
-                <div className="flex items-center gap-2 font-semibold text-sm">
-                  <CreditCard className="h-4 w-4" />
-                  決済をお願いします
-                </div>
-                <p className="text-xs opacity-70">配送が完了しました。下記から決済を完了してください。</p>
-                <Link href={`/payment/${shipmentId}`}>
-                  <Button className="w-full bg-background text-foreground hover:bg-background/90">
-                    決済へ進む
-                  </Button>
-                </Link>
-              </div>
-            )}
-
-            {isPaid && (
-              <div className="mt-8 rounded-xl bg-green-50 border border-green-200 p-4 flex items-center gap-2 text-green-700 text-sm font-semibold">
-                <Check className="h-4 w-4" />
-                支払い完了
-              </div>
-            )}
           </div>
 
           {/* Details */}
-          <div className="w-full md:w-2/3">
+          <div className="w-full md:w-2/3 space-y-4">
             <Card className="border-border shadow-sm">
               <CardHeader className="bg-muted/30 border-b border-border/50">
                 <CardTitle className="text-lg">案件詳細</CardTitle>
@@ -219,6 +198,28 @@ export default function Shipment() {
                 </div>
               </CardContent>
             </Card>
+
+            {needsPayment && (
+              <div className="rounded-xl bg-foreground text-background p-4 space-y-3">
+                <div className="flex items-center gap-2 font-semibold text-sm">
+                  <CreditCard className="h-4 w-4" />
+                  決済をお願いします
+                </div>
+                <p className="text-xs opacity-70">配送が完了しました。下記から決済を完了してください。</p>
+                <Link href={`/payment/${shipmentId}`}>
+                  <Button className="w-full bg-background text-foreground hover:bg-background/90">
+                    決済へ進む
+                  </Button>
+                </Link>
+              </div>
+            )}
+
+            {isPaid && (
+              <div className="rounded-xl bg-green-50 border border-green-200 p-4 flex items-center gap-2 text-green-700 text-sm font-semibold">
+                <Check className="h-4 w-4" />
+                支払い完了
+              </div>
+            )}
           </div>
         </div>
 
