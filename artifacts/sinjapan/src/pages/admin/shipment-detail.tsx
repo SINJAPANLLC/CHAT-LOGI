@@ -138,7 +138,7 @@ export default function AdminShipmentDetail() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start lg:items-stretch">
         {/* 左カラム */}
         <div className="lg:col-span-3 space-y-5">
 
@@ -234,7 +234,7 @@ export default function AdminShipmentDetail() {
         </div>
 
         {/* 右カラム */}
-        <div className="lg:col-span-2 space-y-5">
+        <div className="lg:col-span-2 flex flex-col gap-5">
 
           {/* 収益サマリー */}
           <div className="bg-primary text-primary-foreground rounded-xl shadow-sm overflow-hidden">
@@ -261,12 +261,12 @@ export default function AdminShipmentDetail() {
           </div>
 
           {/* AIヒアリング履歴 */}
-          <div className="bg-card border border-border rounded-xl shadow-sm">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
+          <div className="bg-card border border-border rounded-xl shadow-sm flex flex-col flex-1 min-h-0">
+            <div className="flex items-center gap-2 px-5 py-4 border-b border-border shrink-0">
               <Bot className="h-4 w-4 text-muted-foreground" />
               <h2 className="font-semibold text-sm">AIヒアリング履歴</h2>
             </div>
-            <div className="px-4 py-4 max-h-[480px] overflow-y-auto space-y-3">
+            <div className="px-4 py-4 overflow-y-auto space-y-3 flex-1">
               {!conversations || conversations.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">履歴はありません</p>
               ) : (
