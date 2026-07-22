@@ -10,7 +10,7 @@ import { ja } from 'date-fns/locale';
 function StatusBadge({ status }: { status: string }) {
   if (status === '納品完了') {
     return (
-      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-200">
+      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-foreground text-background border border-foreground">
         <CreditCard className="h-3 w-3" />
         決済待ち
       </span>
@@ -91,7 +91,7 @@ export default function History() {
                   <div className="bg-muted/30 border-t md:border-t-0 md:border-l border-border p-4 flex gap-2 md:flex-col md:w-36 justify-center shrink-0">
                     {shipment.status === '納品完了' && (
                       <Link href={`/payment/${shipment.id}`} className="w-full">
-                        <Button className="w-full h-9 px-3 text-xs bg-orange-500 hover:bg-orange-600 text-white">
+                        <Button className="w-full h-9 px-3 text-xs">
                           <CreditCard className="h-3.5 w-3.5 mr-1.5" />
                           決済へ進む
                         </Button>

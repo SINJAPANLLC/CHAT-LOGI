@@ -106,14 +106,14 @@ export default function Shipment() {
             </div>
 
             {needsPayment && (
-              <div className="mt-8 rounded-xl bg-orange-50 border border-orange-200 p-4 space-y-3">
-                <div className="flex items-center gap-2 text-orange-700 font-semibold text-sm">
+              <div className="mt-8 rounded-xl bg-foreground text-background p-4 space-y-3">
+                <div className="flex items-center gap-2 font-semibold text-sm">
                   <CreditCard className="h-4 w-4" />
                   決済をお願いします
                 </div>
-                <p className="text-xs text-orange-600">配送が完了しました。下記から決済を完了してください。</p>
+                <p className="text-xs opacity-70">配送が完了しました。下記から決済を完了してください。</p>
                 <Link href={`/payment/${shipmentId}`}>
-                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white">
+                  <Button className="w-full bg-background text-foreground hover:bg-background/90">
                     決済へ進む
                   </Button>
                 </Link>
