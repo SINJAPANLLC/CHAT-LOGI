@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ArrowUp, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import ReactMarkdown from 'react-markdown';
 
 export default function Chat() {
   const [, params] = useRoute('/chat/:id');
@@ -92,11 +93,17 @@ export default function Chat() {
           >
             <div className={cn(
               "max-w-[80%] rounded-2xl px-5 py-3.5 text-[15px] leading-relaxed",
-              msg.sender === 'user' 
-                ? "bg-primary text-primary-foreground rounded-tr-sm" 
+              msg.sender === 'user'
+                ? "bg-primary text-primary-foreground rounded-tr-sm"
                 : "bg-muted text-foreground rounded-tl-sm"
             )}>
-              {msg.message}
+              {msg.sender === 'user' ? (
+                msg.message
+              ) : (
+                <div className="prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-strong:text-foreground prose-headings:text-foreground">
+                  <ReactMarkdown>{msg.message}</ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
         ))}
