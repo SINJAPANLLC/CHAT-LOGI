@@ -3,7 +3,7 @@ import { useRoute, Link } from 'wouter';
 import { useGetShipment, getGetShipmentQueryKey, useListConversations } from '@workspace/api-client-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, Circle, Loader2, CreditCard, MessageSquare, X, Bot, User, Truck, Phone } from 'lucide-react';
+import { Check, Circle, Loader2, CreditCard, MessageSquare, X, Bot, User, Truck, Phone, MapPin } from 'lucide-react';
 
 const STATUS_FLOW = [
   '受付完了',
@@ -252,10 +252,10 @@ export default function Shipment() {
                     </div>
                     <CardContent className="p-0">
                       <div className="divide-y divide-border/50">
-                        {carrier?.companyName && (
+                        {(s.driverCarrierName || carrier?.companyName) && (
                           <div className="p-4 grid grid-cols-3 gap-4">
                             <div className="text-sm text-muted-foreground">運送会社</div>
-                            <div className="col-span-2 text-sm font-medium">{carrier.companyName}</div>
+                            <div className="col-span-2 text-sm font-medium">{s.driverCarrierName || carrier?.companyName}</div>
                           </div>
                         )}
                         {driverName && (

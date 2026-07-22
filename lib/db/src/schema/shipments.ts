@@ -64,6 +64,7 @@ export const shipmentsTable = pgTable("shipments", {
   ),
   assignedDriverName: text("assigned_driver_name"),
   driverToken: text("driver_token").unique(),
+  driverCarrierName: text("driver_carrier_name"),
   driverPhone: text("driver_phone"),
   driverVehicleNumber: text("driver_vehicle_number"),
   driverLat: numeric("driver_lat"),

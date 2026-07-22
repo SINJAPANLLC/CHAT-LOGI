@@ -34,6 +34,7 @@ export default function DriverPortal() {
   const [shipment, setShipment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [carrierName, setCarrierName] = useState('');
   const [driverName, setDriverName] = useState('');
   const [driverPhone, setDriverPhone] = useState('');
   const [vehicleNumber, setVehicleNumber] = useState('');
@@ -50,6 +51,7 @@ export default function DriverPortal() {
     try {
       const data = await apiFetch(`/api/driver/${token}`);
       setShipment(data);
+      setCarrierName(data.driverCarrierName || '');
       setDriverName(data.assignedDriverName || '');
       setDriverPhone(data.driverPhone || '');
       setVehicleNumber(data.driverVehicleNumber || '');
@@ -103,7 +105,7 @@ export default function DriverPortal() {
     try {
       await apiFetch(`/api/driver/${token}/info`, {
         method: 'PATCH',
-        body: JSON.stringify({ driverName, driverPhone, driverVehicleNumber: vehicleNumber }),
+        body: JSON.stringify({ driverCarrierName: carrierName, driverName, driverPhone, driverVehicleNumber: vehicleNumber }),
       });
       setInfoSaved(true);
       setTimeout(() => setInfoSaved(false), 3000);
@@ -214,6 +216,18 @@ export default function DriverPortal() {
           <div className="px-5 py-4 space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Truck className="h-3.5 w-3.5" />運送会社名
+              </label>
+              <input
+                type="text"
+                value={carrierName}
+                onChange={e => setCarrierName(e.target.value)}
+                placeholder="〇〇運輸株式会社"
+                className="w-full rounded-lg border border-border px-3 py-2.5 text-sm bg-background outline-none focus:border-foreground/40 transition-colors"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
                 <User className="h-3.5 w-3.5" />ドライバー名
               </label>
               <input
@@ -250,7 +264,7 @@ export default function DriverPortal() {
             </div>
             <button
               onClick={saveInfo}
-              disabled={savingInfo || (!driverName && !driverPhone && !vehicleNumber)}
+              disabled={savingInfo || (!carrierName && !driverName && !driverPhone && !vehicleNumber)}
               className="w-full py-2.5 rounded-lg bg-foreground text-background text-sm font-medium disabled:opacity-40 transition-opacity hover:opacity-80"
             >
               {savingInfo ? <Loader2 className="h-4 w-4 animate-spin mx-auto" /> : infoSaved ? '✓ 保存しました' : '情報を保存'}
