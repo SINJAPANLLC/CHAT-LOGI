@@ -46,13 +46,8 @@ export default function Proposal() {
   const cardRef = useRef<any>(null);
   const cardContainerRef = useRef<HTMLDivElement>(null);
 
-  // Check if user already has a card on file
-  const [hasCard, setHasCard] = useState<boolean | null>(null);
-  useEffect(() => {
-    customFetch<any>('/api/auth/me').then(u => {
-      setHasCard(!!u.squareCardId);
-    }).catch(() => setHasCard(false));
-  }, []);
+  // hasCard は常に false 扱い（毎回カード入力）
+  const hasCard = false;
 
   // Initialize Square when entering card step
   useEffect(() => {
@@ -100,13 +95,8 @@ export default function Proposal() {
   }, [step]);
 
   const handleApproveClick = () => {
-    if (hasCard) {
-      // すでにカード登録済み → 直接承認
-      doApprove();
-    } else {
-      // カード未登録 → カード登録ステップへ
-      setStep('card');
-    }
+    // 常にカード入力ステップへ
+    setStep('card');
   };
 
   const doApprove = async () => {
@@ -121,11 +111,11 @@ export default function Proposal() {
     try {
       const result = await cardRef.current.tokenize();
       if (result.status !== 'OK') throw new Error(result.errors?.[0]?.message ?? 'カードの読み取りに失敗しました');
-      await customFetch('/api/square/register-card', {
+      await customFetch('/api/square/authorize', {
         method: 'POST',
-        body: JSON.stringify({ sourceId: result.token }),
+        body: JSON.stringify({ shipmentId, sourceId: result.token }),
       });
-      toast({ title: 'カードを登録しました' });
+      toast({ title: '決済の与信確保が完了しました' });
       await doApprove();
     } catch (e: any) {
       setCardError(e.message);
@@ -219,7 +209,7 @@ export default function Proposal() {
               disabled={registering || !cardReady}
               className="flex-1 py-2.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {registering ? <><Loader2 className="h-4 w-4 animate-spin" />処理中…</> : 'カードを登録して依頼する'}
+              {registering ? <><Loader2 className="h-4 w-4 animate-spin" />処理中…</> : 'カードで支払い・依頼する'}
             </button>
           </div>
         </div>
