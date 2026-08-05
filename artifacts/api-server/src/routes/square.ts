@@ -30,6 +30,7 @@ router.post("/square/register-card", requireAuth, async (req, res): Promise<void
     });
     const custData = await custRes.json() as any;
     if (!custRes.ok) {
+      console.error("[Square] 顧客作成失敗:", JSON.stringify(custData.errors));
       res.status(502).json({ error: "Square顧客作成失敗", detail: custData.errors });
       return;
     }
@@ -47,6 +48,7 @@ router.post("/square/register-card", requireAuth, async (req, res): Promise<void
   });
   const cardData = await cardRes.json() as any;
   if (!cardRes.ok) {
+    console.error("[Square] カード登録失敗 status:", cardRes.status, "errors:", JSON.stringify(cardData.errors));
     res.status(502).json({ error: "Squareカード登録失敗", detail: cardData.errors });
     return;
   }
