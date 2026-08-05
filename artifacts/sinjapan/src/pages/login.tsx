@@ -55,7 +55,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-muted/10">
-      <div className="w-full max-w-md space-y-8">
+      <div className="w-full max-w-md space-y-8 my-8">
         <div className="text-center">
           <Link href="/" className="inline-flex justify-center mb-2">
             <img src="/logo.jpg" alt="Chat LOGI" className="h-8 w-auto" />
@@ -65,15 +65,15 @@ export default function Login() {
 
         <div className="bg-card border border-border p-6 sm:p-8 rounded-xl shadow-sm">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>メールアドレス</FormLabel>
+                    <FormLabel>メールアドレス <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="example@sinjapan.co.jp" {...field} />
+                      <Input type="email" placeholder="example@domain.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -85,28 +85,28 @@ export default function Login() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>パスワード</FormLabel>
+                    <FormLabel>パスワード <span className="text-destructive">*</span></FormLabel>
                     <FormControl>
-                      <Input type="password" {...field} />
+                      <Input type="password" placeholder="6文字以上" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              <div className="flex gap-3">
-                <Button type="submit" className="flex-1 bg-black text-white hover:bg-black/90" disabled={login.isPending}>
-                  {login.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  ログイン
-                </Button>
-                <Link href="/register" className="flex-1">
-                  <Button type="button" variant="outline" className="w-full bg-white text-black border-black hover:bg-gray-50">
-                    新規登録
-                  </Button>
-                </Link>
-              </div>
+              <Button type="submit" className="w-full mt-2 bg-black text-white hover:bg-black/90" disabled={login.isPending}>
+                {login.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                ログイン
+              </Button>
             </form>
           </Form>
+        </div>
+
+        <div className="text-center text-sm text-muted-foreground">
+          アカウントをお持ちでないですか？{' '}
+          <Link href="/register" className="font-medium text-primary hover:underline">
+            新規登録
+          </Link>
         </div>
       </div>
     </div>
