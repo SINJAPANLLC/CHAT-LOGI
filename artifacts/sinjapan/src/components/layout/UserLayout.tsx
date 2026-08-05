@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'wouter';
 
 import { useGetMe, useLogout } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Clock, LayoutDashboard, LogOut, Settings, Menu, X, FileText, Building2
 } from 'lucide-react';
@@ -10,14 +11,16 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
   const hasToken = !!localStorage.getItem('sinjapan_auth_token');
   const { data: user } = useGetMe();
   const logout = useLogout();
+  const queryClient = useQueryClient();
   const [pathname, setLocation] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem('sinjapan_auth_token');
+    queryClient.clear();
+    logout.mutate(undefined);
     setLocation('/login');
     setMobileOpen(false);
-    logout.mutate(undefined);
   };
 
   const NavContent = () => (
