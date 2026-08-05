@@ -41,6 +41,7 @@ import InvoiceDetail from '@/pages/invoice-detail';
 
 // Public pages (no layout)
 import DriverPortal from '@/pages/driver-portal';
+import LP from '@/pages/lp';
 
 const queryClient = new QueryClient();
 
@@ -114,6 +115,9 @@ function Router() {
       <Route path="/invoices/:id">
         <UserLayout><InvoiceDetail /></UserLayout>
       </Route>
+
+      {/* LP — no auth, no layout */}
+      <Route path="/lp" component={LP} />
 
       {/* Driver portal — no auth, no layout */}
       <Route path="/driver/:token" component={DriverPortal} />
