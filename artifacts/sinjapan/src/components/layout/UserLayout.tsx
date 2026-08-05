@@ -15,8 +15,9 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
 
   const handleLogout = () => {
     localStorage.removeItem('sinjapan_auth_token');
-    logout.mutate(undefined, { onSuccess: () => setLocation('/login') });
+    setLocation('/login');
     setMobileOpen(false);
+    logout.mutate(undefined);
   };
 
   const NavContent = () => (
