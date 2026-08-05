@@ -304,15 +304,15 @@ export default function Proposal() {
 
           {/* カード登録案内 */}
           {hasCard === false && (
-            <div className="px-6 py-3 bg-blue-50 border-t border-blue-100 flex items-center gap-2 text-xs text-blue-700">
+            <div className="px-6 py-3 bg-black border-t border-black flex items-center gap-2 text-xs text-white">
               <CreditCard className="h-3.5 w-3.5 shrink-0" />
-              依頼確定後にお支払いカードの登録が必要です（配車確定時にオーソリ、納品後に引き落とし）
+              依頼確定後にお支払いカードの登録が必要です
             </div>
           )}
           {hasCard === true && (
-            <div className="px-6 py-3 bg-muted/30 border-t border-border flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="px-6 py-3 bg-black border-t border-black flex items-center gap-2 text-xs text-white">
               <CreditCard className="h-3.5 w-3.5 shrink-0" />
-              登録済みカードで決済されます（配車確定時にオーソリ、納品後に引き落とし）
+              登録済みカードで決済されます
             </div>
           )}
 
