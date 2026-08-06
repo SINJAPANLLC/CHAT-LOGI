@@ -29,7 +29,6 @@ function buildPreviewHtml(subject: string, bodyText: string, ctaText: string) {
 <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%">
 <tr><td style="background:#000;padding:22px 32px;border-radius:12px 12px 0 0">
   <span style="color:#fff;font-size:18px;font-weight:800;letter-spacing:1px">Chat LOGI</span>
-  <span style="color:#888;font-size:10px;margin-left:8px">チャットで頼める物流代行</span>
 </td></tr>
 <tr><td style="background:#111;padding:28px 32px 20px">
   <p style="margin:0;font-size:20px;font-weight:800;color:#fff;line-height:1.4">${headline}</p>

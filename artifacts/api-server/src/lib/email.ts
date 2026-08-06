@@ -94,7 +94,7 @@ export function buildSalesEmailHtml(opts: SalesEmailOptions): string {
         <tr><td style="background:#000;padding:28px 40px;border-radius:12px 12px 0 0">
           <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
             <tr>
-              <td><span style="color:#fff;font-size:20px;font-weight:800;letter-spacing:1px">Chat LOGI</span><span style="color:#888;font-size:11px;margin-left:8px">チャットで頼める物流代行</span></td>
+              <td><span style="color:#fff;font-size:20px;font-weight:800;letter-spacing:1px">Chat LOGI</span></td>
               <td align="right"><span style="color:#888;font-size:11px">logistics@chatlogi.jp</span></td>
             </tr>
           </table>
@@ -197,7 +197,6 @@ export function buildEmailHtml(opts: EmailOptions | string, bodyArg?: string, re
             <tr>
               <td>
                 <span style="color:#ffffff;font-size:20px;font-weight:800;letter-spacing:1px">Chat LOGI</span>
-                <span style="color:#888;font-size:12px;margin-left:10px;letter-spacing:0.5px">チャットで頼める物流代行</span>
               </td>
               ${statusBadge ? `
               <td align="right">

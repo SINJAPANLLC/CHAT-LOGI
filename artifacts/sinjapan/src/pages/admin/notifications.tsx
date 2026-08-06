@@ -488,7 +488,6 @@ function EmailPreview() {
           <div style={{ background: '#000', padding: '20px 28px', borderRadius: '10px 10px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
               <span style={{ color: '#fff', fontWeight: 800, fontSize: 16, letterSpacing: 1 }}>Chat LOGI</span>
-              <span style={{ color: '#888', fontSize: 12, marginLeft: 10 }}>チャットで頼める物流代行</span>
             </div>
             {p.badge && (
               <span style={{ background: '#fff', color: '#000', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>{p.badge}</span>
