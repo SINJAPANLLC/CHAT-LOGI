@@ -181,7 +181,7 @@ export default function BlogArticle() {
               物流コストを<br />削減したいですか？
             </p>
             <p style={{ color: '#aaa', fontSize: 12, margin: '0 0 20px', lineHeight: 1.7 }}>
-              AIが最適な運送プランを即時提案。チャットで簡単に依頼できます。
+              チャットするだけ。あとはSIN JAPANのスタッフが手配します。
             </p>
             <Link href="/lp">
               <span style={{ display: 'block', background: '#fff', color: '#000', padding: '12px 0', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'center' }}>
@@ -233,7 +233,7 @@ export default function BlogArticle() {
 
       {/* フッター */}
       <footer style={{ borderTop: '1px solid #e5e5e5', padding: '32px 24px', textAlign: 'center' }}>
-        <p style={{ color: '#bbb', fontSize: 12 }}>© {new Date().getFullYear()} Chat LOGI｜AI物流マッチングプラットフォーム</p>
+        <p style={{ color: '#bbb', fontSize: 12 }}>© {new Date().getFullYear()} Chat LOGI｜チャットするだけで荷物が運べる</p>
       </footer>
     </div>
   );

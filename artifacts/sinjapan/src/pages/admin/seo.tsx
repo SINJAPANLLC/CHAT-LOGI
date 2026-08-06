@@ -17,11 +17,11 @@ function apiFetch(path: string, opts?: RequestInit) {
 type SeoField = { label: string; key: string; type: 'input' | 'textarea'; placeholder: string };
 
 const SEO_FIELDS: SeoField[] = [
-  { label: 'サイトタイトル',        key: 'title',          type: 'input',    placeholder: 'Chat LOGI | AI物流マッチング' },
-  { label: 'メタディスクリプション', key: 'description',    type: 'textarea', placeholder: 'AIが最適な配送プランを提案。リアルタイムで配送状況を確認できる次世代物流プラットフォーム。' },
-  { label: 'メタキーワード',         key: 'keywords',       type: 'input',    placeholder: '物流, 配送, AI, マッチング, 運送' },
-  { label: 'OGタイトル（SNS表示）', key: 'ogTitle',        type: 'input',    placeholder: 'Chat LOGI | AI物流マッチング' },
-  { label: 'OG説明文（SNS表示）',   key: 'ogDescription',  type: 'textarea', placeholder: 'AIが最適な配送プランを提案します。' },
+  { label: 'サイトタイトル',        key: 'title',          type: 'input',    placeholder: 'Chat LOGI | チャットするだけで荷物が運べる' },
+  { label: 'メタディスクリプション', key: 'description',    type: 'textarea', placeholder: 'チャットで依頼するだけ。あとはSIN JAPANのスタッフが配車・手配をすべて代行します。' },
+  { label: 'メタキーワード',         key: 'keywords',       type: 'input',    placeholder: '物流, 配送, 物流代行, 配車, 運送' },
+  { label: 'OGタイトル（SNS表示）', key: 'ogTitle',        type: 'input',    placeholder: 'Chat LOGI | チャットするだけで荷物が運べる' },
+  { label: 'OG説明文（SNS表示）',   key: 'ogDescription',  type: 'textarea', placeholder: 'チャットで依頼するだけ。SIN JAPANのスタッフが手配します。' },
   { label: 'OG画像URL',            key: 'ogImage',        type: 'input',    placeholder: 'https://example.com/og-image.png' },
   { label: 'Google Analyticsタグ', key: 'gaTag',          type: 'input',    placeholder: 'G-XXXXXXXXXX' },
   { label: 'Googleサーチコンソール確認コード', key: 'gscCode', type: 'input', placeholder: 'google-site-verification=...' },

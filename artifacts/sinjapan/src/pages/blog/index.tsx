@@ -181,7 +181,7 @@ export default function BlogIndex() {
 
       {/* フッター */}
       <footer style={{ borderTop: '1px solid #e5e5e5', padding: '32px 24px', textAlign: 'center' }}>
-        <p style={{ color: '#bbb', fontSize: 12 }}>© {new Date().getFullYear()} Chat LOGI｜AI物流マッチングプラットフォーム</p>
+        <p style={{ color: '#bbb', fontSize: 12 }}>© {new Date().getFullYear()} Chat LOGI｜チャットするだけで荷物が運べる</p>
       </footer>
     </div>
   );

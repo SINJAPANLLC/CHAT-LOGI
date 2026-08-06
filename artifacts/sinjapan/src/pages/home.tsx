@@ -128,7 +128,7 @@ export default function Home() {
 
       {/* Greeting */}
       <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-16 tracking-tight">
-        今日は何を運びましょうか？
+        チャットするだけ。荷物が運べる。
       </h1>
 
       {/* Input card */}
@@ -161,7 +161,7 @@ export default function Home() {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="配送の内容を入力してください"
+              placeholder="運びたい荷物を教えてください"
               rows={1}
               disabled={isSubmitting}
               className="flex-1 bg-transparent outline-none resize-none text-base text-foreground placeholder:text-muted-foreground leading-relaxed min-h-[28px] max-h-[200px] disabled:opacity-50"

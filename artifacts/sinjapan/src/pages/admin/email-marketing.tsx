@@ -29,11 +29,11 @@ function buildPreviewHtml(subject: string, bodyText: string, ctaText: string) {
 <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%">
 <tr><td style="background:#000;padding:22px 32px;border-radius:12px 12px 0 0">
   <span style="color:#fff;font-size:18px;font-weight:800;letter-spacing:1px">Chat LOGI</span>
-  <span style="color:#888;font-size:10px;margin-left:8px">物流AIプラットフォーム</span>
+  <span style="color:#888;font-size:10px;margin-left:8px">チャットで頼める物流代行</span>
 </td></tr>
 <tr><td style="background:#111;padding:28px 32px 20px">
   <p style="margin:0;font-size:20px;font-weight:800;color:#fff;line-height:1.4">${headline}</p>
-  <p style="margin:10px 0 0;font-size:12px;color:#888">AI物流マッチングサービス Chat LOGI よりご連絡いたします</p>
+  <p style="margin:10px 0 0;font-size:12px;color:#888">物流代行サービス Chat LOGI よりご連絡いたします</p>
 </td></tr>
 <tr><td style="background:#fff;padding:28px 32px 20px">
   <p style="margin:0 0 16px;font-size:13px;color:#333;font-weight:500">○○株式会社 ご担当者様</p>
@@ -43,9 +43,9 @@ function buildPreviewHtml(subject: string, bodyText: string, ctaText: string) {
   <p style="margin:0 0 12px;font-size:10px;font-weight:700;color:#999;letter-spacing:1px">Chat LOGI の特長</p>
   <table width="100%" cellpadding="0" cellspacing="0">
     <tr>
-      <td width="33%" style="padding-right:8px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">🤖 AI見積もり</p><p style="margin:0;font-size:11px;color:#666">チャットで完結。最短即日手配。</p></td>
-      <td width="33%" style="padding:0 4px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">📍 リアルタイム追跡</p><p style="margin:0;font-size:11px;color:#666">配送状況を24時間確認可能。</p></td>
-      <td width="33%" style="padding-left:8px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">💴 コスト削減</p><p style="margin:0;font-size:11px;color:#666">多数の運送会社から最適提案。</p></td>
+      <td width="33%" style="padding-right:8px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">チャットで依頼</p><p style="margin:0;font-size:11px;color:#666">入力するだけ。最短即日手配。</p></td>
+      <td width="33%" style="padding:0 4px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">プロが手配</p><p style="margin:0;font-size:11px;color:#666">SIN JAPANのスタッフが対応。</p></td>
+      <td width="33%" style="padding-left:8px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">状況を確認</p><p style="margin:0;font-size:11px;color:#666">配送状況を24時間確認可能。</p></td>
     </tr>
   </table>
 </td></tr>
@@ -67,7 +67,7 @@ const TEMPLATES = [
   {
     label: '新規ご挨拶',
     subject: '【Chat LOGI】はじめまして',
-    body: '{会社名} {担当者名}\n\nはじめまして。AI物流マッチングサービス「Chat LOGI」と申します。\n\n弊社はAIを活用した物流の最適化・コスト削減を支援しており、\n貴社の物流業務を効率化できると考えご連絡いたしました。\n\nぜひ一度、詳細をご説明する機会をいただけますと幸いです。\n\nよろしくお願いいたします。',
+    body: '{会社名} {担当者名}\n\nはじめまして。物流代行サービス「Chat LOGI」を運営している合同会社SIN JAPANと申します。\n\nChat LOGIはチャットで依頼するだけで、弊社スタッフが配車・手配をすべて代行するサービスです。\n貴社の物流業務をよりシンプルにできると考え、ご連絡いたしました。\n\nぜひ一度、詳細をご説明する機会をいただけますと幸いです。\n\nよろしくお願いいたします。',
   },
   {
     label: 'サービス案内',
