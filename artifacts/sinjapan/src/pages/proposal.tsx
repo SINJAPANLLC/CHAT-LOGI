@@ -49,6 +49,14 @@ export default function Proposal() {
   // hasCard は常に false 扱い（毎回カード入力）
   const hasCard = false;
 
+  // 法人請求書払い審査状況
+  const [invoiceApproved, setInvoiceApproved] = useState(false);
+  useEffect(() => {
+    customFetch<any>('/api/corporate/status')
+      .then(s => { if (s?.creditStatus === 'approved') setInvoiceApproved(true); })
+      .catch(() => {});
+  }, []);
+
   // Initialize Square when entering card step
   useEffect(() => {
     if (step !== 'card') return;
@@ -292,8 +300,13 @@ export default function Proposal() {
             )}
           </div>
 
-          {/* カード登録案内 */}
-          {hasCard === false && (
+          {/* 支払い案内 */}
+          {invoiceApproved ? (
+            <div className="px-6 py-3 bg-black border-t border-black flex items-center gap-2 text-xs text-white">
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-green-400" />
+              法人請求書払いが利用可能です
+            </div>
+          ) : hasCard === false ? (
             <div className="px-6 py-3 bg-black border-t border-black text-xs text-white space-y-1">
               <div className="flex items-center gap-2">
                 <CreditCard className="h-3.5 w-3.5 shrink-0" />
@@ -305,8 +318,7 @@ export default function Proposal() {
                 </a>
               </div>
             </div>
-          )}
-          {hasCard === true && (
+          ) : (
             <div className="px-6 py-3 bg-black border-t border-black flex items-center gap-2 text-xs text-white">
               <CreditCard className="h-3.5 w-3.5 shrink-0" />
               登録済みカードで決済されます
@@ -328,7 +340,7 @@ export default function Proposal() {
               disabled={updateStatus.isPending || hasCard === null}
               className="flex-1 py-2.5 rounded-full bg-foreground text-background text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {updateStatus.isPending ? <><Loader2 className="h-4 w-4 animate-spin" />処理中…</> : hasCard ? 'この内容で依頼する' : 'この内容で依頼する（カード登録へ）'}
+              {updateStatus.isPending ? <><Loader2 className="h-4 w-4 animate-spin" />処理中…</> : invoiceApproved || hasCard ? 'この内容で依頼する' : 'この内容で依頼する（カード登録へ）'}
             </button>
           </div>
         </div>
