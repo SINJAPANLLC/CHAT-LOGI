@@ -45,7 +45,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { href: '/admin/pricing',       label: 'AIプロンプト',      icon: CircleDollarSign },
     { href: '/admin/notifications',    label: '通知管理',     icon: Bell },
     { href: '/admin/email-marketing', label: 'メール営業',    icon: Mail },
-    { href: '/admin/seo',             label: 'SEO',          icon: Search },
+    { href: '/admin/blog',            label: 'ブログ管理',   icon: FileText },
+    { href: '/admin/seo',             label: 'SEO設定',      icon: Search },
     { href: '/admin/contacts',        label: 'お問い合わせ',  icon: MessageSquare },
   ];
 

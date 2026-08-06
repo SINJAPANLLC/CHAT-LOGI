@@ -16,6 +16,9 @@ import configRouter from "./config";
 import financeRouter from "./finance";
 import driverRouter from "./driver";
 import aiSettingsRouter from "./ai-settings";
+import marketingRouter from "./marketing";
+import blogRouter from "./blog";
+import contactsRouter from "./contacts";
 
 const router: IRouter = Router();
 
@@ -36,5 +39,8 @@ router.use(configRouter);
 router.use(financeRouter);
 router.use(driverRouter);
 router.use(aiSettingsRouter);
+router.use(marketingRouter);
+router.use(blogRouter);
+router.use(contactsRouter);
 
 export default router;

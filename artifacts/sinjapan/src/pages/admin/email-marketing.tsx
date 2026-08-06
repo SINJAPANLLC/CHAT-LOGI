@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
-import { useListUsers } from '@workspace/api-client-react';
-import { Mail, Send, Users, User, Plus, Trash2, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  Mail, Send, Users, Plus, Trash2, Loader2, Sparkles, Upload,
+  List, History, ChevronDown, Check, Eye, X
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
+// ── API helper ───────────────────────────────────────────────────────────────
 function apiFetch(path: string, opts?: RequestInit) {
   const token = localStorage.getItem('sinjapan_auth_token');
   return fetch(path, {
@@ -15,144 +19,527 @@ function apiFetch(path: string, opts?: RequestInit) {
   }).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); });
 }
 
+// ── HTML preview builder (ブラウザ側プレビュー用) ─────────────────────────────
+function buildPreviewHtml(subject: string, bodyText: string, ctaText: string) {
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  const body = esc(bodyText).replace(/\{会社名\}/g, '<span style="background:#fffbe6;padding:0 2px">○○株式会社</span>').replace(/\{担当者名\}/g, '<span style="background:#fffbe6;padding:0 2px">田中様</span>');
+  const headline = esc(subject.replace(/【Chat LOGI】\s*/g, ''));
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><style>body{margin:0;background:#f0f0f0;font-family:'Helvetica Neue',Arial,sans-serif}</style></head><body>
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f0f0;padding:24px 12px"><tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%">
+<tr><td style="background:#000;padding:22px 32px;border-radius:12px 12px 0 0">
+  <span style="color:#fff;font-size:18px;font-weight:800;letter-spacing:1px">Chat LOGI</span>
+  <span style="color:#888;font-size:10px;margin-left:8px">物流AIプラットフォーム</span>
+</td></tr>
+<tr><td style="background:#111;padding:28px 32px 20px">
+  <p style="margin:0;font-size:20px;font-weight:800;color:#fff;line-height:1.4">${headline}</p>
+  <p style="margin:10px 0 0;font-size:12px;color:#888">AI物流マッチングサービス Chat LOGI よりご連絡いたします</p>
+</td></tr>
+<tr><td style="background:#fff;padding:28px 32px 20px">
+  <p style="margin:0 0 16px;font-size:13px;color:#333;font-weight:500">○○株式会社 ご担当者様</p>
+  <div style="font-size:14px;color:#333;line-height:2">${body}</div>
+</td></tr>
+<tr><td style="background:#f7f7f7;padding:18px 32px;border-top:1px solid #eee;border-bottom:1px solid #eee">
+  <p style="margin:0 0 12px;font-size:10px;font-weight:700;color:#999;letter-spacing:1px">Chat LOGI の特長</p>
+  <table width="100%" cellpadding="0" cellspacing="0">
+    <tr>
+      <td width="33%" style="padding-right:8px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">🤖 AI見積もり</p><p style="margin:0;font-size:11px;color:#666">チャットで完結。最短即日手配。</p></td>
+      <td width="33%" style="padding:0 4px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">📍 リアルタイム追跡</p><p style="margin:0;font-size:11px;color:#666">配送状況を24時間確認可能。</p></td>
+      <td width="33%" style="padding-left:8px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">💴 コスト削減</p><p style="margin:0;font-size:11px;color:#666">多数の運送会社から最適提案。</p></td>
+    </tr>
+  </table>
+</td></tr>
+<tr><td style="background:#fff;padding:24px 32px;text-align:center">
+  <div style="display:inline-block;background:#000;border-radius:8px;padding:14px 36px">
+    <span style="color:#fff;font-size:13px;font-weight:700">${ctaText || 'Chat LOGIを無料で試す →'}</span>
+  </div>
+</td></tr>
+<tr><td style="background:#f7f7f7;padding:16px 32px;border-radius:0 0 12px 12px;border-top:1px solid #ebebeb">
+  <p style="margin:0 0 4px;font-size:10px;color:#bbb">このメールは Chat LOGI 営業チームより送信しています。</p>
+  <p style="margin:0;font-size:10px;color:#bbb">配信停止をご希望の場合はこのメールに返信ください。© ${new Date().getFullYear()} Chat LOGI</p>
+</td></tr>
+</table></td></tr></table>
+</body></html>`;
+}
+
+// ── テンプレート ──────────────────────────────────────────────────────────────
 const TEMPLATES = [
-  { label: '新規ご挨拶',    subject: '【Chat LOGI】はじめまして',               body: 'はじめまして。Chat LOGI（チャットロジ）でございます。\n\n弊社はAIを活用した物流マッチングサービスを提供しております。\nこの度はご縁をいただき、ご連絡させていただきました。\n\nぜひ一度、サービスの詳細についてご説明の機会をいただけますと幸いです。\n\nどうぞよろしくお願いいたします。' },
-  { label: 'サービス案内',  subject: '【Chat LOGI】物流コスト削減のご提案',       body: 'お世話になっております。Chat LOGIでございます。\n\n弊社のAI物流マッチングサービスにより、配送コストの削減と業務効率化を実現されているお客様が増えております。\n\n・AIによる最適ルート提案\n・リアルタイムの配送状況確認\n・一元管理でペーパーレス化\n\n無料でお試しいただけますので、お気軽にお問い合わせください。' },
-  { label: 'フォロー',      subject: '【Chat LOGI】その後いかがでしょうか',       body: 'いつもお世話になっております。Chat LOGIでございます。\n\n先日はお時間をいただきありがとうございました。\nその後、弊社サービスについてご検討はいかがでしょうか。\n\nご不明な点やご質問がございましたら、お気軽にご連絡ください。\n\n引き続きよろしくお願いいたします。' },
-  { label: 'カスタム',      subject: '',                                         body: '' },
+  {
+    label: '新規ご挨拶',
+    subject: '【Chat LOGI】はじめまして',
+    body: '{会社名} {担当者名}\n\nはじめまして。AI物流マッチングサービス「Chat LOGI」と申します。\n\n弊社はAIを活用した物流の最適化・コスト削減を支援しており、\n貴社の物流業務を効率化できると考えご連絡いたしました。\n\nぜひ一度、詳細をご説明する機会をいただけますと幸いです。\n\nよろしくお願いいたします。',
+  },
+  {
+    label: 'サービス案内',
+    subject: '【Chat LOGI】物流コスト削減のご提案',
+    body: '{会社名} {担当者名}\n\nお世話になっております。Chat LOGIでございます。\n\nAIによる最適ルート提案・リアルタイム配送管理により、\n配送コストを平均20%削減されている企業様が増えております。\n\n・AIチャットで即日見積もり\n・複数の運送会社から最安値を自動選定\n・ペーパーレスで書類管理もラクラク\n\n無料でお試しいただけますので、お気軽にご連絡ください。',
+  },
+  {
+    label: 'フォローアップ',
+    subject: '【Chat LOGI】その後いかがでしょうか',
+    body: '{会社名} {担当者名}\n\nいつもお世話になっております。Chat LOGIでございます。\n\n先日はお時間をいただきありがとうございました。\nその後、弊社サービスのご検討はいかがでしょうか。\n\nご不明な点やご質問があれば、どうぞお気軽にご連絡ください。\n引き続きよろしくお願いいたします。',
+  },
+  { label: 'カスタム', subject: '', body: '' },
 ];
 
-type Target = 'all' | 'select' | 'manual';
+type Prospect = {
+  id: number; companyName: string; contactName?: string; email: string;
+  phone?: string; industry?: string; prefecture?: string; status: string;
+  sentAt?: string; createdAt: string;
+};
 
-export default function EmailMarketing() {
+// ── リスト管理タブ ─────────────────────────────────────────────────────────────
+function ProspectList({ onSelectForSend }: { onSelectForSend: (ids: number[]) => void }) {
   const { toast } = useToast();
-  const { data: usersData } = useListUsers();
-  const users = (usersData as any)?.users ?? [];
+  const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<number[]>([]);
 
-  const [template, setTemplate] = useState(0);
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
-  const [target, setTarget] = useState<Target>('all');
-  const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const [manualEmails, setManualEmails] = useState('');
+  // AI生成ダイアログ
+  const [showGenDialog, setShowGenDialog] = useState(false);
+  const [genIndustry, setGenIndustry] = useState('');
+  const [genPrefecture, setGenPrefecture] = useState('');
+  const [genCount, setGenCount] = useState('10');
+  const [generating, setGenerating] = useState(false);
+
+  // 手動追加ダイアログ
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [addForm, setAddForm] = useState({ companyName: '', contactName: '', email: '', phone: '', industry: '', prefecture: '' });
+  const [adding, setAdding] = useState(false);
+
+  // CSV
+  const csvRef = useRef<HTMLInputElement>(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const rows = await apiFetch('/api/admin/prospects');
+      setProspects(rows);
+    } catch { toast({ title: 'リストの取得に失敗しました', variant: 'destructive' }); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const toggleAll = () => {
+    setSelected(selected.length === prospects.length ? [] : prospects.map(p => p.id));
+  };
+  const toggle = (id: number) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
+
+  const handleGenerate = async () => {
+    if (!genIndustry || !genPrefecture) { toast({ title: '業種と都道府県を入力してください', variant: 'destructive' }); return; }
+    setGenerating(true);
+    try {
+      const r = await apiFetch('/api/admin/prospects/generate', {
+        method: 'POST', body: JSON.stringify({ industry: genIndustry, prefecture: genPrefecture, count: Number(genCount) }),
+      });
+      toast({ title: `${r.inserted}件のリストを生成しました` });
+      setShowGenDialog(false); setGenIndustry(''); setGenPrefecture(''); setGenCount('10');
+      load();
+    } catch (e: any) { toast({ title: e.message, variant: 'destructive' }); }
+    finally { setGenerating(false); }
+  };
+
+  const handleAdd = async () => {
+    if (!addForm.companyName || !addForm.email) { toast({ title: '会社名とメールアドレスは必須です', variant: 'destructive' }); return; }
+    setAdding(true);
+    try {
+      await apiFetch('/api/admin/prospects', { method: 'POST', body: JSON.stringify(addForm) });
+      toast({ title: '追加しました' });
+      setShowAddDialog(false); setAddForm({ companyName: '', contactName: '', email: '', phone: '', industry: '', prefecture: '' });
+      load();
+    } catch (e: any) { toast({ title: e.message, variant: 'destructive' }); }
+    finally { setAdding(false); }
+  };
+
+  const handleCsv = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split('\n').filter(l => l.trim());
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const idx = (n: string) => headers.findIndex(h => h === n || h.toLowerCase() === n.toLowerCase());
+      const ci = { companyName: idx('会社名') !== -1 ? idx('会社名') : idx('companyName'), email: idx('メール') !== -1 ? idx('メール') : idx('email'), contactName: idx('担当者名') !== -1 ? idx('担当者名') : idx('contactName'), phone: idx('電話') !== -1 ? idx('電話') : idx('phone'), industry: idx('業種') !== -1 ? idx('業種') : idx('industry'), prefecture: idx('都道府県') !== -1 ? idx('都道府県') : idx('prefecture') };
+      const rows = lines.slice(1).map(l => {
+        const cols = l.split(',').map(c => c.trim().replace(/"/g, ''));
+        return { companyName: cols[ci.companyName] ?? '', email: cols[ci.email] ?? '', contactName: cols[ci.contactName] ?? '', phone: cols[ci.phone] ?? '', industry: cols[ci.industry] ?? '', prefecture: cols[ci.prefecture] ?? '' };
+      }).filter(r => r.companyName && r.email);
+      if (rows.length === 0) { toast({ title: 'CSVに有効なデータがありません', variant: 'destructive' }); return; }
+      try {
+        const r = await apiFetch('/api/admin/prospects/import', { method: 'POST', body: JSON.stringify({ rows }) });
+        toast({ title: `${r.inserted}件インポートしました` }); load();
+      } catch (e: any) { toast({ title: e.message, variant: 'destructive' }); }
+    };
+    reader.readAsText(file, 'UTF-8');
+    e.target.value = '';
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selected.length === 0) return;
+    try {
+      await apiFetch('/api/admin/prospects', { method: 'DELETE', body: JSON.stringify({ ids: selected }) });
+      toast({ title: `${selected.length}件削除しました` }); setSelected([]); load();
+    } catch (e: any) { toast({ title: e.message, variant: 'destructive' }); }
+  };
+
+  const unsentSelected = selected.filter(id => prospects.find(p => p.id === id)?.status === 'unsent');
+  const total = prospects.length, unsent = prospects.filter(p => p.status === 'unsent').length, sent = prospects.filter(p => p.status === 'sent').length;
+
+  return (
+    <div className="space-y-4">
+      {/* 統計 */}
+      <div className="grid grid-cols-3 gap-3">
+        {[['総数', total, ''], ['未送信', unsent, 'text-amber-600'], ['送信済', sent, 'text-green-600']].map(([label, val, cls]) => (
+          <div key={label as string} className="rounded-xl border border-border bg-card px-4 py-3 text-center">
+            <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+            <p className={`text-2xl font-bold ${cls}`}>{val}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ツールバー */}
+      <div className="flex flex-wrap gap-2 items-center">
+        <Button onClick={() => setShowGenDialog(true)} className="bg-black text-white hover:bg-black/90 gap-1.5">
+          <Sparkles className="h-4 w-4" />AI自動生成
+        </Button>
+        <Button variant="outline" onClick={() => setShowAddDialog(true)} className="gap-1.5">
+          <Plus className="h-4 w-4" />手動追加
+        </Button>
+        <Button variant="outline" onClick={() => csvRef.current?.click()} className="gap-1.5">
+          <Upload className="h-4 w-4" />CSV取込
+        </Button>
+        <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCsv} />
+        {selected.length > 0 && (
+          <>
+            <div className="flex-1" />
+            <Button variant="outline" className="gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+              onClick={() => { onSelectForSend(selected); }}>
+              <Send className="h-4 w-4" />{selected.length}件に送信
+            </Button>
+            <Button variant="outline" className="gap-1.5 text-red-500 border-red-200 hover:bg-red-50" onClick={handleDeleteSelected}>
+              <Trash2 className="h-4 w-4" />{selected.length}件削除
+            </Button>
+          </>
+        )}
+      </div>
+
+      {/* テーブル */}
+      {loading ? (
+        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : prospects.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground text-sm border border-dashed rounded-xl">
+          <Sparkles className="h-8 w-8 mx-auto mb-3 opacity-30" />
+          <p>「AI自動生成」で見込みリストを作成してください</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border overflow-x-auto shadow-sm">
+          <table className="w-full text-sm min-w-[760px]">
+            <thead>
+              <tr className="bg-muted/40 border-b border-border">
+                <th className="px-3 py-3 w-10">
+                  <input type="checkbox" checked={selected.length === prospects.length} onChange={toggleAll} className="accent-foreground" />
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">会社名</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">担当者</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">メールアドレス</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">業種</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">都道府県</th>
+                <th className="px-4 py-3 text-center font-medium text-muted-foreground">ステータス</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border bg-card">
+              {prospects.map(p => (
+                <tr key={p.id} className={`hover:bg-muted/20 transition-colors ${selected.includes(p.id) ? 'bg-blue-50/50' : ''}`}>
+                  <td className="px-3 py-3 text-center">
+                    <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} className="accent-foreground" />
+                  </td>
+                  <td className="px-4 py-3 font-medium max-w-[180px] truncate">{p.companyName}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{p.contactName ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground max-w-[180px] truncate">{p.email}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{p.industry ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{p.prefecture ?? '—'}</td>
+                  <td className="px-4 py-3 text-center">
+                    {p.status === 'sent'
+                      ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-50 px-2 py-0.5 rounded-full"><Check className="h-3 w-3" />送信済</span>
+                      : <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">未送信</span>
+                    }
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* AI生成ダイアログ */}
+      {showGenDialog && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                <h2 className="text-lg font-bold">AI リスト自動生成</h2>
+              </div>
+              <button onClick={() => setShowGenDialog(false)}><X className="h-5 w-5 text-muted-foreground" /></button>
+            </div>
+            <p className="text-sm text-muted-foreground">業種・地域を指定するとAIが見込み企業リストを自動生成します。</p>
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label>業種 <span className="text-red-500">*</span></Label>
+                <Input value={genIndustry} onChange={e => setGenIndustry(e.target.value)} placeholder="例: 食品メーカー、製造業、小売業" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>都道府県 <span className="text-red-500">*</span></Label>
+                <Input value={genPrefecture} onChange={e => setGenPrefecture(e.target.value)} placeholder="例: 東京都、大阪府、愛知県" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>生成件数</Label>
+                <select value={genCount} onChange={e => setGenCount(e.target.value)} className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background">
+                  {[5,10,15,20,30].map(n => <option key={n} value={n}>{n}件</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-700 leading-relaxed">
+              ⚠ AIが生成するメールアドレスは架空のものです。実際の担当者アドレスに編集してからご利用ください。
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="outline" onClick={() => setShowGenDialog(false)}>キャンセル</Button>
+              <Button onClick={handleGenerate} disabled={generating} className="bg-black text-white hover:bg-black/90 gap-1.5">
+                {generating ? <><Loader2 className="h-4 w-4 animate-spin" />生成中…</> : <><Sparkles className="h-4 w-4" />生成する</>}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 手動追加ダイアログ */}
+      {showAddDialog && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold flex items-center gap-2"><Plus className="h-5 w-5" />手動追加</h2>
+              <button onClick={() => setShowAddDialog(false)}><X className="h-5 w-5 text-muted-foreground" /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2 space-y-1"><Label>会社名 *</Label><Input value={addForm.companyName} onChange={e => setAddForm(f => ({...f, companyName: e.target.value}))} /></div>
+              <div className="space-y-1"><Label>担当者名</Label><Input value={addForm.contactName} onChange={e => setAddForm(f => ({...f, contactName: e.target.value}))} /></div>
+              <div className="space-y-1"><Label>電話番号</Label><Input value={addForm.phone} onChange={e => setAddForm(f => ({...f, phone: e.target.value}))} /></div>
+              <div className="col-span-2 space-y-1"><Label>メールアドレス *</Label><Input value={addForm.email} onChange={e => setAddForm(f => ({...f, email: e.target.value}))} /></div>
+              <div className="space-y-1"><Label>業種</Label><Input value={addForm.industry} onChange={e => setAddForm(f => ({...f, industry: e.target.value}))} /></div>
+              <div className="space-y-1"><Label>都道府県</Label><Input value={addForm.prefecture} onChange={e => setAddForm(f => ({...f, prefecture: e.target.value}))} /></div>
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>キャンセル</Button>
+              <Button onClick={handleAdd} disabled={adding} className="bg-black text-white hover:bg-black/90">
+                {adding ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />追加中…</> : '追加する'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── 営業メール送信タブ ─────────────────────────────────────────────────────────
+function SendTab({ preselectedIds, prospects, onSent }: {
+  preselectedIds: number[];
+  prospects: Prospect[];
+  onSent: () => void;
+}) {
+  const { toast } = useToast();
+  const [tplIdx, setTplIdx] = useState(0);
+  const [subject, setSubject] = useState(TEMPLATES[0].subject);
+  const [body, setBody] = useState(TEMPLATES[0].body);
+  const [ctaText, setCtaText] = useState('Chat LOGIを無料で試す →');
+  const [targetMode, setTargetMode] = useState<'selected' | 'unsent'>('selected');
   const [sending, setSending] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   const applyTemplate = (idx: number) => {
-    setTemplate(idx);
+    setTplIdx(idx);
     setSubject(TEMPLATES[idx].subject);
     setBody(TEMPLATES[idx].body);
   };
 
-  const toggleUser = (id: number) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
+  const targetIds = targetMode === 'selected'
+    ? preselectedIds
+    : prospects.filter(p => p.status === 'unsent').map(p => p.id);
 
   const handleSend = async () => {
     if (!subject.trim() || !body.trim()) { toast({ title: '件名と本文を入力してください', variant: 'destructive' }); return; }
+    if (targetIds.length === 0) { toast({ title: '送信先がありません', variant: 'destructive' }); return; }
     setSending(true);
     try {
-      let emails: string[] = [];
-      if (target === 'all') {
-        emails = users.map((u: any) => u.email).filter(Boolean);
-      } else if (target === 'select') {
-        emails = users.filter((u: any) => selectedIds.includes(u.id)).map((u: any) => u.email).filter(Boolean);
-      } else {
-        emails = manualEmails.split(/[\n,]/).map(e => e.trim()).filter(Boolean);
-      }
-      if (emails.length === 0) { toast({ title: '送信先を指定してください', variant: 'destructive' }); setSending(false); return; }
-      await apiFetch('/api/notifications/send', {
+      const r = await apiFetch('/api/admin/prospects/send', {
         method: 'POST',
-        body: JSON.stringify({ subject, body, emails }),
+        body: JSON.stringify({ ids: targetIds, subject, bodyText: body, ctaText }),
       });
-      toast({ title: `${emails.length}件に送信しました` });
-      setSubject(''); setBody(''); setTemplate(0); setSelectedIds([]); setManualEmails('');
-    } catch {
-      toast({ title: '送信中にエラーが発生しました', variant: 'destructive' });
-    } finally {
-      setSending(false);
-    }
+      toast({ title: r.message });
+      onSent();
+    } catch (e: any) { toast({ title: e.message, variant: 'destructive' }); }
+    finally { setSending(false); }
   };
 
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">メール営業</h1>
-        <p className="text-muted-foreground mt-1 text-sm">ユーザーまたは外部アドレスへ営業メールを一括送信します。</p>
-      </div>
+  const previewHtml = buildPreviewHtml(subject || '件名を入力してください', body || '本文を入力してください', ctaText);
 
-      {/* テンプレート */}
-      <div className="space-y-3">
+  return (
+    <div className="space-y-6">
+      {/* テンプレート選択 */}
+      <div className="space-y-2">
         <Label className="text-sm font-semibold">テンプレート</Label>
         <div className="flex flex-wrap gap-2">
           {TEMPLATES.map((t, i) => (
-            <button
-              key={i}
-              onClick={() => applyTemplate(i)}
-              className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${template === i ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted'}`}
-            >
+            <button key={i} onClick={() => applyTemplate(i)}
+              className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${tplIdx === i ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted'}`}>
               {t.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* 件名・本文 */}
-      <div className="space-y-4">
-        <div className="space-y-1.5">
-          <Label>件名</Label>
-          <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="メールの件名" />
-        </div>
-        <div className="space-y-1.5">
-          <Label>本文</Label>
-          <Textarea value={body} onChange={e => setBody(e.target.value)} placeholder="メール本文を入力してください" className="min-h-[200px] resize-none" />
-        </div>
-      </div>
-
-      {/* 送信対象 */}
-      <div className="space-y-3">
+      {/* 送信先 */}
+      <div className="space-y-2">
         <Label className="text-sm font-semibold">送信対象</Label>
-        <div className="flex flex-wrap gap-2">
-          {([['all', '全ユーザー', <Users className="h-3.5 w-3.5" />], ['select', 'ユーザーを選択', <User className="h-3.5 w-3.5" />], ['manual', 'メールアドレスを入力', <Mail className="h-3.5 w-3.5" />]] as const).map(([v, l, icon]) => (
-            <button
-              key={v}
-              onClick={() => setTarget(v)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${target === v ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted'}`}
-            >
-              {icon}{l}
-            </button>
-          ))}
+        <div className="flex gap-2">
+          <button onClick={() => setTargetMode('selected')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${targetMode === 'selected' ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted'}`}>
+            <Users className="h-3.5 w-3.5" />選択した{preselectedIds.length}件
+          </button>
+          <button onClick={() => setTargetMode('unsent')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm border transition-colors ${targetMode === 'unsent' ? 'bg-foreground text-background border-foreground' : 'border-border hover:bg-muted'}`}>
+            <Mail className="h-3.5 w-3.5" />未送信全件（{prospects.filter(p => p.status === 'unsent').length}件）
+          </button>
         </div>
-
-        {target === 'select' && (
-          <div className="border border-border rounded-xl divide-y divide-border/50 max-h-64 overflow-y-auto">
-            {users.map((u: any) => (
-              <label key={u.id} className="flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-muted/40">
-                <input type="checkbox" checked={selectedIds.includes(u.id)} onChange={() => toggleUser(u.id)} className="accent-foreground" />
-                <span className="text-sm flex-1">{u.name ?? u.email}</span>
-                <span className="text-xs text-muted-foreground">{u.email}</span>
-              </label>
-            ))}
-          </div>
-        )}
-
-        {target === 'manual' && (
-          <div className="space-y-1.5">
-            <Label>メールアドレス（カンマまたは改行区切り）</Label>
-            <Textarea value={manualEmails} onChange={e => setManualEmails(e.target.value)} placeholder="example@domain.com, another@domain.com" className="min-h-[100px] resize-none" />
-          </div>
-        )}
-
-        {target === 'all' && (
-          <p className="text-xs text-muted-foreground">{users.length} 件のユーザーに送信されます</p>
-        )}
-        {target === 'select' && selectedIds.length > 0 && (
-          <p className="text-xs text-muted-foreground">{selectedIds.length} 件に送信されます</p>
-        )}
+        <p className="text-xs text-muted-foreground">送信対象: {targetIds.length}件</p>
       </div>
 
-      <Button onClick={handleSend} disabled={sending} className="bg-black text-white hover:bg-black/90">
-        {sending ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />送信中…</> : <><Send className="h-4 w-4 mr-2" />送信する</>}
+      {/* 件名・本文・CTA */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>件名</Label>
+            <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="メールの件名" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>本文 <span className="text-muted-foreground text-xs font-normal">（{'{会社名}'} {'{担当者名}'} が自動置換されます）</span></Label>
+            <Textarea value={body} onChange={e => setBody(e.target.value)} className="min-h-[220px] resize-none font-mono text-sm" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>CTAボタンテキスト</Label>
+            <Input value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="Chat LOGIを無料で試す →" />
+          </div>
+        </div>
+
+        {/* プレビュー */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Eye className="h-4 w-4 text-muted-foreground" />
+            <Label className="text-sm font-semibold">HTMLメールプレビュー</Label>
+          </div>
+          <div className="border border-border rounded-xl overflow-hidden shadow-sm" style={{ height: 440 }}>
+            <iframe
+              srcDoc={previewHtml}
+              className="w-full h-full"
+              style={{ border: 'none', transform: 'scale(0.78)', transformOrigin: 'top left', width: '128%', height: '128%' }}
+              title="メールプレビュー"
+            />
+          </div>
+        </div>
+      </div>
+
+      <Button onClick={handleSend} disabled={sending || targetIds.length === 0} className="bg-black text-white hover:bg-black/90 gap-2">
+        {sending ? <><Loader2 className="h-4 w-4 animate-spin" />送信中…</> : <><Send className="h-4 w-4" />{targetIds.length}件に送信する</>}
       </Button>
+    </div>
+  );
+}
+
+// ── 送信履歴タブ ──────────────────────────────────────────────────────────────
+function HistoryTab({ prospects }: { prospects: Prospect[] }) {
+  const sent = prospects.filter(p => p.status === 'sent').sort((a, b) =>
+    (b.sentAt ?? b.createdAt) > (a.sentAt ?? a.createdAt) ? 1 : -1
+  );
+  if (sent.length === 0) return (
+    <div className="text-center py-16 text-muted-foreground text-sm border border-dashed rounded-xl">
+      <History className="h-8 w-8 mx-auto mb-3 opacity-30" />
+      <p>送信履歴はありません</p>
+    </div>
+  );
+  return (
+    <div className="rounded-xl border border-border overflow-x-auto shadow-sm">
+      <table className="w-full text-sm min-w-[560px]">
+        <thead>
+          <tr className="bg-muted/40 border-b border-border">
+            <th className="px-5 py-3 text-left font-medium text-muted-foreground">会社名</th>
+            <th className="px-5 py-3 text-left font-medium text-muted-foreground">メールアドレス</th>
+            <th className="px-5 py-3 text-left font-medium text-muted-foreground">業種</th>
+            <th className="px-5 py-3 text-left font-medium text-muted-foreground">送信日時</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border bg-card">
+          {sent.map(p => (
+            <tr key={p.id} className="hover:bg-muted/20 transition-colors">
+              <td className="px-5 py-3 font-medium">{p.companyName}</td>
+              <td className="px-5 py-3 text-xs text-muted-foreground">{p.email}</td>
+              <td className="px-5 py-3 text-xs text-muted-foreground">{p.industry ?? '—'}</td>
+              <td className="px-5 py-3 text-xs text-muted-foreground">
+                {p.sentAt ? format(new Date(p.sentAt), 'yyyy/MM/dd HH:mm') : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── メインページ ───────────────────────────────────────────────────────────────
+const TABS = [
+  { key: 'list',    label: 'リスト管理', icon: List },
+  { key: 'send',    label: 'メール送信', icon: Send },
+  { key: 'history', label: '送信履歴',  icon: History },
+];
+
+export default function EmailMarketing() {
+  const [tab, setTab] = useState('list');
+  const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [sendTargetIds, setSendTargetIds] = useState<number[]>([]);
+
+  const loadProspects = async () => {
+    const token = localStorage.getItem('sinjapan_auth_token');
+    const rows = await fetch('/api/admin/prospects', { headers: { Authorization: `Bearer ${token}` } })
+      .then(async r => r.ok ? (await r.text() ? r.json() : []) : []).catch(() => []);
+    setProspects(rows);
+  };
+  useEffect(() => { loadProspects(); }, []);
+
+  const handleSelectForSend = (ids: number[]) => {
+    setSendTargetIds(ids);
+    setTab('send');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">メール営業</h1>
+        <p className="text-muted-foreground mt-1 text-sm">AIで見込みリストを自動生成し、HTMLメールで一括送信します。</p>
+      </div>
+
+      <div className="flex gap-1 border-b border-border">
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+              tab === t.key ? 'text-foreground border-b-2 border-foreground -mb-px' : 'text-muted-foreground hover:text-foreground'
+            }`}>
+            <t.icon className="h-4 w-4" />{t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'list'    && <ProspectList onSelectForSend={handleSelectForSend} />}
+      {tab === 'send'    && <SendTab preselectedIds={sendTargetIds} prospects={prospects} onSent={() => { loadProspects(); setTab('history'); }} />}
+      {tab === 'history' && <HistoryTab prospects={prospects} />}
     </div>
   );
 }

@@ -160,6 +160,11 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           {/* Auth buttons — not logged in only */}
           {!isLoggedIn && !hasToken && (
             <div className="flex items-center gap-2">
+              <Link href="/contact">
+                <button className="text-sm font-medium px-4 py-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
+                  お問い合わせ
+                </button>
+              </Link>
               <Link href="/login">
                 <button className="text-sm font-medium px-4 py-1.5 rounded-full hover:bg-muted transition-colors">
                   ログイン
@@ -179,7 +184,15 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
         </main>
 
         {!isChatPage && (
-          <footer className="border-t border-border py-5 mt-auto">
+          <footer className="border-t border-border pt-6 pb-5 mt-auto">
+            <div className="text-center space-y-1 mb-4 px-4">
+              <p className="text-xs font-semibold text-foreground">合同会社SIN JAPAN</p>
+              <p className="text-xs text-muted-foreground">〒243-0303 神奈川県愛甲郡愛川町中津7287</p>
+              <p className="text-xs text-muted-foreground">TEL 046-212-2325　FAX 046-212-2326</p>
+              <p className="text-xs text-muted-foreground">
+                <a href="mailto:info@sinjapan.jp" className="hover:underline">info@sinjapan.jp</a>
+              </p>
+            </div>
             <p className="text-center text-xs text-muted-foreground">
               © {new Date().getFullYear()} Chat LOGI. All rights reserved.
             </p>

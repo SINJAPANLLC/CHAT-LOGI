@@ -56,6 +56,106 @@ function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
 }
 
+// ── 営業メール用HTMLビルダー ──────────────────────────────────────────────────
+export interface SalesEmailOptions {
+  subject: string;
+  bodyText: string;
+  companyName?: string;
+  contactName?: string;
+  ctaText?: string;
+  ctaUrl?: string;
+}
+
+export function buildSalesEmailHtml(opts: SalesEmailOptions): string {
+  const { subject, bodyText, companyName, contactName, ctaText, ctaUrl } = opts;
+  const baseUrl = process.env.APP_BASE_URL ?? "https://chatlogi.jp";
+  const cta = ctaUrl ?? baseUrl;
+  const ctaLabel = ctaText ?? "Chat LOGIを無料で試す →";
+  const to = contactName ? `${companyName ? companyName + " " : ""}${contactName} 様` : (companyName ? `${companyName} ご担当者様` : "ご担当者様");
+
+  // {会社名} {担当者名} プレースホルダーを置換
+  const personalizedBody = bodyText
+    .replace(/\{会社名\}/g, companyName ?? "貴社")
+    .replace(/\{担当者名\}/g, contactName ?? "ご担当者");
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>${subject}</title>
+</head>
+<body style="margin:0;padding:0;background:#f0f0f0;font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',Meiryo,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#f0f0f0;padding:40px 16px">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" role="presentation" style="max-width:600px;width:100%">
+
+        <!-- ヘッダー -->
+        <tr><td style="background:#000;padding:28px 40px;border-radius:12px 12px 0 0">
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+            <tr>
+              <td><span style="color:#fff;font-size:20px;font-weight:800;letter-spacing:1px">Chat LOGI</span><span style="color:#888;font-size:11px;margin-left:8px">物流AIプラットフォーム</span></td>
+              <td align="right"><span style="color:#888;font-size:11px">logistics@chatlogi.jp</span></td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- ヒーロー -->
+        <tr><td style="background:#111;padding:36px 40px 28px">
+          <p style="margin:0;font-size:22px;font-weight:800;color:#fff;line-height:1.4">${esc(subject.replace(/【Chat LOGI】\s*/g, ""))}</p>
+          <p style="margin:12px 0 0;font-size:13px;color:#888">AI物流マッチングサービス Chat LOGI よりご連絡いたします</p>
+        </td></tr>
+
+        <!-- ボディ -->
+        <tr><td style="background:#fff;padding:36px 40px 28px">
+          <p style="margin:0 0 20px;font-size:14px;color:#333;font-weight:500">${esc(to)}</p>
+          <div style="font-size:15px;color:#333;line-height:2">${esc(personalizedBody)}</div>
+        </td></tr>
+
+        <!-- サービス特長 -->
+        <tr><td style="background:#f7f7f7;padding:24px 40px;border-top:1px solid #eee;border-bottom:1px solid #eee">
+          <p style="margin:0 0 16px;font-size:12px;font-weight:700;color:#999;letter-spacing:1px;text-transform:uppercase">Chat LOGI の特長</p>
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+            <tr>
+              <td width="33%" style="padding-right:12px;vertical-align:top">
+                <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111">🤖 AI見積もり</p>
+                <p style="margin:0;font-size:12px;color:#666;line-height:1.6">チャットで完結。最短即日手配。</p>
+              </td>
+              <td width="33%" style="padding:0 6px;vertical-align:top">
+                <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111">📍 リアルタイム追跡</p>
+                <p style="margin:0;font-size:12px;color:#666;line-height:1.6">配送状況を24時間確認可能。</p>
+              </td>
+              <td width="33%" style="padding-left:12px;vertical-align:top">
+                <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111">💴 コスト削減</p>
+                <p style="margin:0;font-size:12px;color:#666;line-height:1.6">多数の運送会社から最適提案。</p>
+              </td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- CTA -->
+        <tr><td style="background:#fff;padding:32px 40px;text-align:center">
+          <table cellpadding="0" cellspacing="0" role="presentation" style="margin:0 auto">
+            <tr><td style="background:#000;border-radius:8px">
+              <a href="${cta}" style="display:inline-block;padding:16px 40px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;letter-spacing:0.5px">${ctaLabel}</a>
+            </td></tr>
+          </table>
+          <p style="margin:16px 0 0;font-size:12px;color:#aaa">または <a href="${cta}" style="color:#666;text-decoration:underline">${cta}</a> よりアクセスください</p>
+        </td></tr>
+
+        <!-- フッター -->
+        <tr><td style="background:#f7f7f7;padding:20px 40px;border-radius:0 0 12px 12px;border-top:1px solid #ebebeb">
+          <p style="margin:0 0 6px;font-size:11px;color:#bbb">このメールは Chat LOGI 営業チームより送信しています。</p>
+          <p style="margin:0;font-size:11px;color:#bbb">配信停止をご希望の場合はこのメールに返信してください。© ${new Date().getFullYear()} Chat LOGI</p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
 export function buildEmailHtml(opts: EmailOptions | string, bodyArg?: string, recipientNameArg?: string): string {
   // 後方互換：buildEmailHtml(subject, body, name) の形式もサポート
   let subject: string, body: string, recipientName: string | undefined,

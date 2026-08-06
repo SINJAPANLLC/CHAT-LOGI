@@ -43,6 +43,13 @@ import CorporateApply from '@/pages/corporate-apply';
 import Invoices from '@/pages/invoices';
 import InvoiceDetail from '@/pages/invoice-detail';
 
+// Blog (public, no auth)
+import BlogIndex from '@/pages/blog/index';
+import BlogArticle from '@/pages/blog/article';
+
+// Admin: Blog
+import AdminBlog from '@/pages/admin/blog';
+
 // Public pages (no layout)
 import DriverPortal from '@/pages/driver-portal';
 import LP from '@/pages/lp';
@@ -93,6 +100,9 @@ function Router() {
       <Route path="/admin/seo">
         <AdminLayout><AdminSeo /></AdminLayout>
       </Route>
+      <Route path="/admin/blog">
+        <AdminLayout><AdminBlog /></AdminLayout>
+      </Route>
       <Route path="/admin/contacts">
         <AdminLayout><AdminContacts /></AdminLayout>
       </Route>
@@ -131,6 +141,10 @@ function Router() {
       <Route path="/invoices/:id">
         <UserLayout><InvoiceDetail /></UserLayout>
       </Route>
+
+      {/* Blog — no auth, no layout */}
+      <Route path="/blog/:slug" component={BlogArticle} />
+      <Route path="/blog" component={BlogIndex} />
 
       {/* LP — no auth, no layout */}
       <Route path="/lp" component={LP} />
