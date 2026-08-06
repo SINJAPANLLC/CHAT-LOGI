@@ -434,7 +434,7 @@ export default function AdminShipmentDetail() {
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">管理者メモ</Label>
+                  <Label className="text-xs">備考</Label>
                   <Textarea
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
@@ -467,7 +467,7 @@ export default function AdminShipmentDetail() {
                   </div>
                 )}
                 <div className="pt-3">
-                  <p className="text-xs text-muted-foreground mb-1.5">管理者メモ</p>
+                  <p className="text-xs text-muted-foreground mb-1.5">備考</p>
                   <p className="text-sm whitespace-pre-wrap text-muted-foreground bg-muted/30 rounded-lg p-3 min-h-[48px]">
                     {shipment.notes || 'メモなし'}
                   </p>
