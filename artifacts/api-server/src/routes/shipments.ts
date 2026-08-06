@@ -13,6 +13,9 @@ import {
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { authorizeOnFile } from "../lib/square-authorize";
 import { sendAutoNotification } from "../lib/autoNotify";
+import { calcPriceWithConfig, parsePricingConfig, DEFAULT_CONFIG } from "../lib/pricing";
+import { settingsTable } from "@workspace/db";
+import { like } from "drizzle-orm";
 
 const router: IRouter = Router();
 
@@ -155,8 +158,41 @@ router.patch("/shipments/:id", requireAuth, async (req, res): Promise<void> => {
   }
 
   const updates: any = { ...parsed.data, updatedAt: new Date() };
-  // Calculate gross profit if both prices present
-  if (updates.customerPrice != null && updates.carrierCost != null) {
+
+  // 車格・ルート変更時は料金を自動再計算
+  const PRICING_FIELDS = ['vehicleSize','vehicleBodyType','truckCount','pickupAddress','deliveryAddress','deliveryType','additionalWork','highwayUse'];
+  const hasPricingChange = PRICING_FIELDS.some(f => f in updates);
+  if (hasPricingChange && updates.customerPrice == null) {
+    // 現在のDBレコードを取得してアドレス等を補完
+    const [cur] = await db.select().from(shipmentsTable).where(eq(shipmentsTable.id, id));
+    if (cur) {
+      const hw = (updates.highwayUse ?? cur.highwayUse) === 'あり' || (updates.highwayUse ?? cur.highwayUse) === true;
+      let pricingCfg = DEFAULT_CONFIG;
+      try {
+        const rows = await db.select().from(settingsTable).where(like(settingsTable.key, "pricing_%"));
+        if (rows.length > 0) pricingCfg = parsePricingConfig(rows);
+      } catch { /* デフォルト */ }
+
+      const pricing = calcPriceWithConfig({
+        vehicleSize:     updates.vehicleSize     ?? cur.vehicleSize     ?? '2t',
+        vehicleBodyType: updates.vehicleBodyType ?? cur.vehicleBodyType ?? '平ボディ',
+        truckCount:      Number(updates.truckCount ?? cur.truckCount)   || 1,
+        pickupAddress:   updates.pickupAddress   ?? cur.pickupAddress   ?? '',
+        deliveryAddress: updates.deliveryAddress ?? cur.deliveryAddress ?? '',
+        deliveryType:    updates.deliveryType    ?? cur.deliveryType,
+        additionalWork:  updates.additionalWork  ?? cur.additionalWork,
+        highwayUse: hw,
+        isUrgent: false,
+      }, pricingCfg);
+
+      updates.customerPrice = pricing.customerPrice.toString();
+      updates.carrierCost   = pricing.carrierCost.toString();
+      updates.grossProfit   = pricing.grossProfit.toString();
+    }
+  }
+
+  // 手動で両方指定された場合は粗利を計算
+  if (updates.customerPrice != null && updates.carrierCost != null && !hasPricingChange) {
     updates.grossProfit = (Number(updates.customerPrice) - Number(updates.carrierCost)).toString();
   }
 

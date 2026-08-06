@@ -3,7 +3,7 @@ import { db, pricingRulesTable, settingsTable } from "@workspace/db";
 import { eq, like } from "drizzle-orm";
 import { CreatePricingRuleBody, UpdatePricingRuleBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
-import { parsePricingConfig, serializePricingConfig, DEFAULT_CONFIG } from "../lib/pricing";
+import { parsePricingConfig, serializePricingConfig, DEFAULT_CONFIG, calcPriceWithConfig } from "../lib/pricing";
 
 const router: IRouter = Router();
 
@@ -59,6 +59,33 @@ router.delete("/pricing-rules/:id", requireAdmin, async (req, res): Promise<void
   if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
   await db.delete(pricingRulesTable).where(eq(pricingRulesTable.id, id));
   res.json({ success: true });
+});
+
+// POST /api/pricing/estimate — 保存せずに料金計算（プレビュー用）
+router.post("/pricing/estimate", requireAuth, async (req, res): Promise<void> => {
+  const { vehicleSize, vehicleBodyType, truckCount, pickupAddress, deliveryAddress,
+          deliveryType, additionalWork, highwayUse, isUrgent } = req.body;
+
+  let pricingCfg = DEFAULT_CONFIG;
+  try {
+    const rows = await db.select().from(settingsTable).where(like(settingsTable.key, "pricing_%"));
+    if (rows.length > 0) pricingCfg = parsePricingConfig(rows);
+  } catch { /* デフォルト使用 */ }
+
+  const hw = highwayUse === true || highwayUse === 'true' || highwayUse === 'あり';
+  const pricing = calcPriceWithConfig({
+    vehicleSize:     vehicleSize     ?? '2t',
+    vehicleBodyType: vehicleBodyType ?? '平ボディ',
+    truckCount:      Number(truckCount) || 1,
+    pickupAddress,
+    deliveryAddress,
+    deliveryType,
+    additionalWork,
+    highwayUse: hw,
+    isUrgent:   isUrgent ?? false,
+  }, pricingCfg);
+
+  res.json(pricing);
 });
 
 // ── 料金設定 (settings テーブル経由) ─────────────────────────────────────────

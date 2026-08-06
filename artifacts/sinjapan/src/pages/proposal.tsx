@@ -15,6 +15,12 @@ declare const Square: any;
 const VEHICLE_SIZES = ['軽貨物', '1t', '2t', '4t', '10t', '大型'];
 const BODY_TYPES = ['平ボディ', 'ウイング', 'バン', '冷凍冷蔵', '幌'];
 
+// AIが推奨した車格以上のみ選択可能にするための最小インデックスを返す
+function minVehicleSizeIndex(vehicleSize: string | null | undefined): number {
+  const idx = VEHICLE_SIZES.indexOf(vehicleSize ?? '');
+  return idx >= 0 ? idx : 0;
+}
+
 function formatDatetime(dt?: string | null) {
   if (!dt) return '未定';
   return dt.replace(/^(\d{4})-(\d{2})-(\d{2})\s?/, (_, y, m, d) => `${y}年${Number(m)}月${Number(d)}日 `).trimEnd();
@@ -122,6 +128,8 @@ export default function Proposal() {
   // ── Edit mode state ─────────────────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [previewPrice, setPreviewPrice] = useState<number | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [editData, setEditData] = useState<EditData>({
     pickupDatetime: '', deliveryDeadline: '', cargoType: '', cargoQuantity: '',
     additionalWork: '', vehicleSize: '2t', vehicleBodyType: '平ボディ',
@@ -170,6 +178,35 @@ export default function Proposal() {
 
   const set = <K extends keyof EditData>(k: K, v: EditData[K]) =>
     setEditData(prev => ({ ...prev, [k]: v }));
+
+  // リアルタイム料金プレビュー（車格・高速・台数・作業が変わったとき）
+  useEffect(() => {
+    if (!isEditing) return;
+    const timer = setTimeout(async () => {
+      setPreviewLoading(true);
+      try {
+        const result = await customFetch<{ customerPrice: number; carrierCost: number }>('/api/pricing/estimate', {
+          method: 'POST',
+          body: JSON.stringify({
+            vehicleSize:     editData.vehicleSize,
+            vehicleBodyType: editData.vehicleBodyType,
+            truckCount:      editData.truckCount,
+            pickupAddress:   s?.pickupAddress ?? '',
+            deliveryAddress: s?.deliveryAddress ?? '',
+            deliveryType:    editData.deliveryType,
+            additionalWork:  editData.additionalWork,
+            highwayUse:      editData.highwayUse === 'あり',
+          }),
+        });
+        setPreviewPrice(result.customerPrice);
+      } catch { /* ignore */ } finally {
+        setPreviewLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, editData.vehicleSize, editData.vehicleBodyType, editData.truckCount,
+      editData.highwayUse, editData.additionalWork, editData.deliveryType]);
 
   // ── Square init ────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -330,8 +367,21 @@ export default function Proposal() {
               <CheckCircle className="h-5 w-5" />Chat LOGI 推奨プラン
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold tracking-tight">{formattedPrice}</div>
-              <div className="text-xs text-muted-foreground">税別</div>
+              {isEditing ? (
+                <>
+                  <div className={`text-2xl font-bold tracking-tight transition-opacity ${previewLoading ? 'opacity-40' : ''}`}>
+                    {previewPrice !== null ? fmt(previewPrice) : formattedPrice}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {previewLoading ? '計算中…' : previewPrice !== null && previewPrice !== price ? '変更後の見積もり（税別）' : '税別'}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold tracking-tight">{formattedPrice}</div>
+                  <div className="text-xs text-muted-foreground">税別</div>
+                </>
+              )}
             </div>
           </div>
 
@@ -381,7 +431,18 @@ export default function Proposal() {
               {isEditing ? (
                 <div className="space-y-2">
                   <div className="flex flex-wrap gap-2">
-                    <SelectInput value={editData.vehicleSize} onChange={v => set('vehicleSize', v)} options={VEHICLE_SIZES} />
+                    {/* 車格：AIが推奨したサイズより小さくは選べない */}
+                    <select
+                      value={editData.vehicleSize}
+                      onChange={e => set('vehicleSize', e.target.value)}
+                      className="rounded-lg border border-border px-3 py-1.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                    >
+                      {VEHICLE_SIZES.map((sz, i) => (
+                        <option key={sz} value={sz} disabled={i < minVehicleSizeIndex(s?.vehicleSize)}>
+                          {sz}{i < minVehicleSizeIndex(s?.vehicleSize) ? ' （荷量不足）' : ''}
+                        </option>
+                      ))}
+                    </select>
                     <SelectInput value={editData.vehicleBodyType} onChange={v => set('vehicleBodyType', v)} options={BODY_TYPES} />
                   </div>
                   <div className="flex flex-wrap gap-3 items-center">
