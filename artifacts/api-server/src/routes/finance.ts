@@ -111,41 +111,38 @@ router.get("/admin/finance/invoices", requireAdmin, async (_req, res): Promise<v
   })));
 });
 
-// GET /admin/finance/card-payments — カード決済一覧
+// GET /admin/finance/card-payments — カード決済一覧（shipmentsからcard案件を取得）
 router.get("/admin/finance/card-payments", requireAdmin, async (_req, res): Promise<void> => {
   const rows = await db.select({
-    id:            paymentsTable.id,
-    shipmentId:    paymentsTable.shipmentId,
-    amount:        paymentsTable.amount,
-    tax:           paymentsTable.tax,
-    totalAmount:   paymentsTable.totalAmount,
-    paymentMethod: paymentsTable.paymentMethod,
-    paymentStatus: paymentsTable.paymentStatus,
-    paidAt:        paymentsTable.paidAt,
-    createdAt:     paymentsTable.createdAt,
+    id:              shipmentsTable.id,
+    shipmentId:      shipmentsTable.id,
+    totalAmount:     shipmentsTable.customerPrice,
+    paymentMethod:   shipmentsTable.paymentMethod,
+    paymentStatus:   shipmentsTable.paymentStatus,
+    squareCaptured:  shipmentsTable.squareCaptured,
     pickupAddress:   shipmentsTable.pickupAddress,
     deliveryAddress: shipmentsTable.deliveryAddress,
-    userName:      usersTable.name,
-    companyName:   usersTable.companyName,
-  }).from(paymentsTable)
-    .leftJoin(shipmentsTable, eq(paymentsTable.shipmentId, shipmentsTable.id))
-    .leftJoin(usersTable,    eq(shipmentsTable.userId, usersTable.id))
-    .orderBy(sql`${paymentsTable.createdAt} DESC`);
+    updatedAt:       shipmentsTable.updatedAt,
+    userName:        usersTable.name,
+    companyName:     usersTable.companyName,
+  }).from(shipmentsTable)
+    .leftJoin(usersTable, eq(shipmentsTable.userId, usersTable.id))
+    .where(eq(shipmentsTable.paymentMethod, "card"))
+    .orderBy(sql`${shipmentsTable.updatedAt} DESC`);
 
   res.json(rows.map(r => ({
     ...r,
-    amount:      Number(r.amount),
-    tax:         Number(r.tax),
-    totalAmount: Number(r.totalAmount),
-    createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : r.createdAt,
-    paidAt:    r.paidAt    instanceof Date ? r.paidAt.toISOString()    : r.paidAt,
+    totalAmount: Number(r.totalAmount ?? 0),
+    paidAt: r.squareCaptured === 'true' && r.updatedAt
+      ? (r.updatedAt instanceof Date ? r.updatedAt.toISOString() : r.updatedAt)
+      : null,
   })));
 });
 
-// PATCH /admin/finance/card-payments/:id/reconcile
+// PATCH /admin/finance/card-payments/:id/reconcile — shipmentのステータスを入金確認済みに
 router.patch("/admin/finance/card-payments/:id/reconcile", requireAdmin, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id, 10);
-  await db.update(paymentsTable).set({ paymentStatus: "消し込み済み" }).where(eq(paymentsTable.id, id));
+  await db.update(shipmentsTable).set({ paymentStatus: "入金確認済み", updatedAt: new Date() }).where(eq(shipmentsTable.id, id));
   res.json({ ok: true });
 });
 

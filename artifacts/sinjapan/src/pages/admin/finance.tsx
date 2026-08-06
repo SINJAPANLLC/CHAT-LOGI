@@ -26,10 +26,12 @@ const INV_STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 const PAY_STATUS: Record<string, { label: string; cls: string }> = {
-  '未決済':      { label: '未決済',      cls: 'bg-muted text-muted-foreground border-border' },
-  '決済完了':    { label: '決済完了',    cls: 'bg-amber-100 text-amber-800 border-amber-200' },
-  '消し込み済み':{ label: '消し込み済み',cls: 'bg-green-100 text-green-700 border-green-200' },
-  '請求書発行済み':{ label: '請求書',    cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+  '未決済':       { label: '未決済',       cls: 'bg-muted text-muted-foreground border-border' },
+  '決済処理中':   { label: '決済処理中',   cls: 'bg-muted text-muted-foreground border-border' },
+  '決済完了':     { label: '決済完了',     cls: 'bg-foreground text-background border-foreground' },
+  '入金確認済み': { label: '消し込み済み', cls: 'bg-muted text-muted-foreground border-border' },
+  '請求書発行済み':{ label: '請求書',      cls: 'bg-muted text-foreground border-foreground' },
+  '返金済み':     { label: '返金済み',     cls: 'bg-muted text-muted-foreground border-border' },
 };
 
 // ─── sub-components ───────────────────────────────────────────────────────────
@@ -352,13 +354,15 @@ function CardReconcile() {
   };
   useEffect(() => { load(); }, []);
 
+  const isDone = (p: any) => p.paymentStatus === '入金確認済み';
+
   const filtered = payments.filter(p => {
-    if (filter === 'pending') return p.paymentStatus !== '消し込み済み';
-    if (filter === 'done')    return p.paymentStatus === '消し込み済み';
+    if (filter === 'pending') return !isDone(p);
+    if (filter === 'done')    return isDone(p);
     return true;
   });
 
-  const pendingCount = payments.filter(p => p.paymentStatus !== '消し込み済み').length;
+  const pendingCount = payments.filter(p => !isDone(p)).length;
 
   const reconcile = async (id: number) => {
     setActing(id);
