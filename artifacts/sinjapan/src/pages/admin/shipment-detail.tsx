@@ -313,6 +313,36 @@ export default function AdminShipmentDetail() {
         {/* 左カラム */}
         <div className="lg:col-span-3 space-y-5">
 
+          {/* 顧客情報 */}
+          {shipment.user && (
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+                <h2 className="font-semibold text-sm">顧客情報</h2>
+                {(shipment.user as any).isCompany && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">法人</span>
+                )}
+              </div>
+              <div className="px-5 py-4">
+                <Row label="氏名" value={(shipment.user as any).name} />
+                {(shipment.user as any).companyName && (
+                  <Row label="会社名" value={(shipment.user as any).companyName} />
+                )}
+                <Row label="メール" value={
+                  <a href={`mailto:${(shipment.user as any).email}`} className="underline underline-offset-2 hover:opacity-70">
+                    {(shipment.user as any).email}
+                  </a>
+                } />
+                {(shipment.user as any).phone && (
+                  <Row label="電話番号" value={
+                    <a href={`tel:${(shipment.user as any).phone}`} className="underline underline-offset-2 hover:opacity-70">
+                      {(shipment.user as any).phone}
+                    </a>
+                  } />
+                )}
+              </div>
+            </div>
+          )}
+
           {/* 配送情報 */}
           <Section
             title="配送情報"
