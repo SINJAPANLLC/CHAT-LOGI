@@ -51,6 +51,7 @@ const BlogIndex    = lazy(() => import('@/pages/blog/index'));
 const BlogArticle  = lazy(() => import('@/pages/blog/article'));
 const LP           = lazy(() => import('@/pages/lp'));
 const DriverPortal = lazy(() => import('@/pages/driver-portal'));
+const MasterCard   = lazy(() => import('@/pages/master-card'));
 
 // ── QueryClient with sensible cache times ─────────────────────────────────────
 const queryClient = new QueryClient({
@@ -161,6 +162,9 @@ function Router() {
         <Route path="/invoices/:id">
           <UserLayout><InvoiceDetail /></UserLayout>
         </Route>
+
+        {/* 公開：マスターカード */}
+        <Route path="/master-card/:token" component={MasterCard} />
 
         {/* Blog — no auth, no layout */}
         <Route path="/blog/:slug" component={BlogArticle} />

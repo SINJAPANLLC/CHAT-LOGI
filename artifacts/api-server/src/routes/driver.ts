@@ -5,6 +5,7 @@ import { Router, type IRouter } from "express";
 import { db, shipmentsTable, carriersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { sendEmail, buildEmailHtml, ADMIN_NOTIFY_EMAIL } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -122,6 +123,87 @@ router.post("/driver/:token/location", async (req, res): Promise<void> => {
     driverLng: String(lng),
     driverLocationUpdatedAt: new Date(),
   } as any).where(eq(shipmentsTable.id, shipment.id));
+
+  res.json({ ok: true });
+});
+
+// ── マスターカード（運送会社登録票） ──────────────────────────────────────────
+
+// GET /api/master-card/:token — フォーム表示用（トークンで案件を特定）
+router.get("/master-card/:token", async (req, res): Promise<void> => {
+  const shipment = await findByToken(req.params.token);
+  if (!shipment) { res.status(404).json({ error: "リンクが無効です" }); return; }
+  const carrier = (shipment as any).assignedCarrierId
+    ? (await db.select().from(carriersTable).where(eq(carriersTable.id, (shipment as any).assignedCarrierId)).limit(1))[0]
+    : null;
+  res.json({
+    shipmentId: shipment.id,
+    carrierName: carrier?.companyName ?? (shipment as any).driverCarrierName ?? null,
+  });
+});
+
+// POST /api/master-card/:token/submit — フォーム送信
+router.post("/master-card/:token/submit", async (req, res): Promise<void> => {
+  const shipment = await findByToken(req.params.token);
+  if (!shipment) { res.status(404).json({ error: "リンクが無効です" }); return; }
+
+  const d = req.body as Record<string, string>;
+
+  // 管理者へメール通知
+  const rows = [
+    ["NO", d.no],
+    ["会社名（フリガナ）", d.companyKana],
+    ["会社名", d.companyName],
+    ["支店名（フリガナ）", d.branchKana],
+    ["支店名", d.branchName],
+    ["所在地", d.address],
+    ["TEL", d.tel],
+    ["FAX", d.fax],
+    ["配車担当", d.dispatchContact],
+    ["経理担当", d.accountingContact],
+    ["本社代表者", d.representative],
+    ["締め日", d.closingDate],
+    ["支払日サイト", d.paymentSite],
+    ["振込先銀行", d.bankName],
+    ["預金種別", d.accountType],
+    ["口座名義", d.accountHolder],
+    ["計上日", d.postingDate],
+    ["積日", d.loadDate],
+    ["卸日", d.unloadDate],
+    ["相殺", d.offset],
+    ["適格請求書発行", d.qualifiedInvoice],
+    ["事業者登録番号", d.registrationNumber],
+    ["受領書送付先", d.receiptAddress],
+    ["加入保険会社", d.insuranceCompany],
+    ["保有車両", d.vehicles],
+  ]
+    .filter(([, v]) => v)
+    .map(([k, v]) => `${k}：${v}`)
+    .join("\n");
+
+  const subject = `【Chat LOGI】マスターカード登録 — ${d.companyName ?? "（社名未入力）"} — 案件 #${shipment.id}`;
+  const html = buildEmailHtml({
+    subject,
+    body: `運送会社からマスターカードが提出されました。\n\n${rows}`,
+    ctaText: "管理画面で確認する →",
+  });
+  await sendEmail(ADMIN_NOTIFY_EMAIL, subject, html).catch(() => {});
+
+  // 運送会社テーブルに情報を反映（アサイン済みの場合のみ）
+  if ((shipment as any).assignedCarrierId && d.companyName) {
+    const updates: any = {};
+    if (d.tel) updates.phone = d.tel;
+    if (d.fax) updates.fax = d.fax;
+    if (d.address) updates.serviceAreas = d.address;
+    if (d.vehicles) updates.vehicleTypes = d.vehicles;
+    if (d.bankName || d.accountType || d.accountHolder) {
+      updates.bankAccount = [d.bankName, d.accountType, d.accountHolder].filter(Boolean).join(" / ");
+    }
+    if (d.paymentSite) updates.paymentTerms = d.paymentSite;
+    if (Object.keys(updates).length > 0) {
+      await db.update(carriersTable).set(updates).where(eq(carriersTable.id, (shipment as any).assignedCarrierId));
+    }
+  }
 
   res.json({ ok: true });
 });

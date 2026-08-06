@@ -77,6 +77,9 @@ export default function AdminShipmentDetail() {
   const [notifyPrice, setNotifyPrice] = useState('');
   const [notifyMsg, setNotifyMsg] = useState('');
   const [sendingNotify, setSendingNotify] = useState(false);
+  const [showMasterCard, setShowMasterCard] = useState(false);
+  const [masterCardToken, setMasterCardToken] = useState<string | null>(null);
+  const [generatingMasterToken, setGeneratingMasterToken] = useState(false);
 
   React.useEffect(() => {
     if (shipment) {
@@ -171,9 +174,30 @@ export default function AdminShipmentDetail() {
     } finally { setGeneratingToken(false); }
   };
 
+  const openMasterCard = async () => {
+    setShowMasterCard(true);
+    if (masterCardToken) return;
+    // マスターカードも指示書と同じトークンを使用（既にあれば再利用）
+    if (driverToken) { setMasterCardToken(driverToken); return; }
+    setGeneratingMasterToken(true);
+    try {
+      const token = localStorage.getItem('sinjapan_auth_token');
+      const res = await fetch(`/api/driver/generate/${shipmentId}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      setDriverToken(data.token);
+      setMasterCardToken(data.token);
+    } finally { setGeneratingMasterToken(false); }
+  };
 
   const driverPortalUrl = driverToken
     ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/driver/${driverToken}`
+    : null;
+
+  const masterCardUrl = masterCardToken
+    ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/master-card/${masterCardToken}`
     : null;
 
   const statuses = [
@@ -446,6 +470,15 @@ export default function AdminShipmentDetail() {
           >
             <FileText className="h-4 w-4" />
             指示書を送付する
+          </button>
+
+          {/* マスターカード送付ボタン */}
+          <button
+            onClick={openMasterCard}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-4 text-sm font-medium hover:bg-muted transition-colors"
+          >
+            <FileText className="h-4 w-4" />
+            マスターカードを送付する
           </button>
 
           {/* 値引き承認通知ボタン */}
@@ -843,6 +876,71 @@ export default function AdminShipmentDetail() {
 
             <div className="flex justify-end px-6 py-4 border-t border-border">
               <Button variant="outline" onClick={() => setShowInstruction(false)}>閉じる</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* マスターカード送付モーダル */}
+      {showMasterCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowMasterCard(false)} />
+          <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-lg z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div className="flex items-center gap-2 font-semibold">
+                <FileText className="h-4 w-4" />
+                マスターカード送付
+              </div>
+              <button onClick={() => setShowMasterCard(false)} className="text-muted-foreground hover:text-foreground transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-muted-foreground">以下のURLを運送会社へ共有してください。運送会社が自社情報を入力・送信するとinfo@sinjapan.jpに通知されます。</p>
+              <div className="bg-foreground text-background rounded-xl p-4 space-y-2">
+                <p className="text-xs font-semibold opacity-70">マスターカードURL</p>
+                {generatingMasterToken ? (
+                  <div className="flex items-center gap-2 text-sm opacity-70">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />生成中...
+                  </div>
+                ) : masterCardUrl ? (
+                  <>
+                    <p className="text-xs break-all font-mono opacity-80">{masterCardUrl}</p>
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        onClick={() => { navigator.clipboard.writeText(masterCardUrl); toast({ title: 'URLをコピーしました' }); }}
+                        className="flex-1 py-1.5 text-xs rounded-lg bg-background/20 hover:bg-background/30 transition-colors font-medium"
+                      >
+                        URLをコピー
+                      </button>
+                      <a
+                        href={masterCardUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 py-1.5 text-xs rounded-lg bg-background/20 hover:bg-background/30 transition-colors font-medium text-center"
+                      >
+                        プレビュー
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-xs opacity-60">URL生成に失敗しました</p>
+                )}
+              </div>
+              <div className="bg-muted/30 border border-border rounded-xl p-4 text-sm space-y-1.5">
+                <p className="font-semibold text-xs text-muted-foreground mb-2">運送会社の操作手順</p>
+                <p>① URLにアクセスして自社情報を記入</p>
+                <p>② 「送信する」ボタンで提出</p>
+                <p>③ 印刷・PDF保存も可能</p>
+              </div>
+            </div>
+            <div className="flex justify-end px-6 py-4 border-t border-border">
+              <button
+                onClick={() => setShowMasterCard(false)}
+                className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
+              >
+                閉じる
+              </button>
             </div>
           </div>
         </div>
