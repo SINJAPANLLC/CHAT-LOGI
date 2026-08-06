@@ -243,7 +243,7 @@ export default function Shipment() {
               const embedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.015},${lat-0.010},${lng+0.015},${lat+0.010}&layer=mapnik&marker=${lat},${lng}`;
               return (
                 <Card className="border-border shadow-sm overflow-hidden">
-                  <div className="flex items-center justify-between px-5 py-3.5 bg-foreground text-background">
+                  <div className="flex items-center justify-between px-5 py-3.5 bg-muted/40 border-b border-border">
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
                       <span className="font-semibold text-sm">ドライバー位置</span>
@@ -276,7 +276,7 @@ export default function Shipment() {
                 if (!driverName && !carrier?.companyName) return null;
                 return (
                   <Card className="border-border shadow-sm overflow-hidden">
-                    <div className="flex items-center gap-2 px-5 py-3.5 bg-foreground text-background">
+                    <div className="flex items-center gap-2 px-5 py-3.5 bg-muted/40 border-b border-border">
                       <Truck className="h-4 w-4" />
                       <span className="font-semibold text-sm">担当ドライバー</span>
                     </div>
