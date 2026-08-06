@@ -1,10 +1,10 @@
 import { Router, type IRouter } from "express";
 import { db, shipmentsTable, conversationsTable, settingsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { StartAiChatBody, SendMessageBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { calcPrice } from "../lib/pricing";
+import { calcPriceWithConfig, parsePricingConfig, DEFAULT_CONFIG } from "../lib/pricing";
 
 const router: IRouter = Router();
 
@@ -88,23 +88,46 @@ async function buildSystemPrompt(): Promise<string> {
   const dayOfWeek = dayNames[jst.getUTCDay()];
 
   let template = DEFAULT_PROMPT;
+  let minPrice = DEFAULT_CONFIG.minPrice;
   try {
     const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, "ai_system_prompt"));
     if (row?.value) template = row.value;
+    const pricingRows = await db.select().from(settingsTable).where(like(settingsTable.key, "pricing_%"));
+    if (pricingRows.length > 0) minPrice = parsePricingConfig(pricingRows).minPrice;
   } catch { /* DBエラー時はデフォルトを使用 */ }
 
   return template
     .replace(/\{DATE\}/g, dateStr)
     .replace(/\{WEEKDAY\}/g, dayOfWeek)
-    .replace(/\{TOMORROW\}/g, tomorrow);
+    .replace(/\{TOMORROW\}/g, tomorrow)
+    .replace(/\{MIN_PRICE\}/g, `¥${minPrice.toLocaleString()}`);
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
-function extractProposal(content: string) {
-  const match = content.match(/<proposal>([\s\S]*?)<\/proposal>/);
-  if (!match) return null;
-  try { return JSON.parse(match[1].trim()); } catch { return null; }
+function repairJson(raw: string): string {
+  return raw
+    .replace(/,\s*([}\]])/g, '$1')       // trailing commas
+    .replace(/([{,]\s*)(\w+)\s*:/g, '$1"$2":') // unquoted keys
+    .replace(/:\s*'([^']*)'/g, ': "$1"') // single-quoted values
+    .trim();
+}
+
+function extractProposal(content: string): Record<string, any> | null {
+  // 1) <proposal>…</proposal> タグを試みる
+  const tagMatch = content.match(/<proposal>([\s\S]*?)<\/proposal>/);
+  if (tagMatch) {
+    const raw = tagMatch[1].trim();
+    try { return JSON.parse(raw); } catch { /* fall through */ }
+    try { return JSON.parse(repairJson(raw)); } catch { /* fall through */ }
+  }
+  // 2) タグなし：レスポンス全体から最初の {...} ブロックを探す
+  const jsonMatch = content.match(/\{[\s\S]*"vehicleSize"[\s\S]*\}/);
+  if (jsonMatch) {
+    try { return JSON.parse(jsonMatch[0]); } catch { /* fall through */ }
+    try { return JSON.parse(repairJson(jsonMatch[0])); } catch { /* fall through */ }
+  }
+  return null;
 }
 
 function extractOptions(content: string): string[] | null {
@@ -135,11 +158,18 @@ async function buildMessages(history: { sender: string; message: string }[], new
 }
 
 // Apply proposal data to a DB update object, calculating price via the engine
-function proposalToDbUpdate(proposal: Record<string, any>) {
+async function proposalToDbUpdate(proposal: Record<string, any>) {
   const truckCount = Number(proposal.truckCount) || 1;
   const highwayUse = proposal.highwayUse === true || proposal.highwayUse === 'true';
 
-  const pricing = calcPrice({
+  // DB から料金設定を読み込み（失敗時はデフォルト）
+  let pricingCfg = DEFAULT_CONFIG;
+  try {
+    const rows = await db.select().from(settingsTable).where(like(settingsTable.key, "pricing_%"));
+    if (rows.length > 0) pricingCfg = parsePricingConfig(rows);
+  } catch { /* デフォルト設定を使用 */ }
+
+  const pricing = calcPriceWithConfig({
     vehicleSize: proposal.vehicleSize ?? '2t',
     vehicleBodyType: proposal.vehicleBodyType ?? '平ボディ',
     truckCount,
@@ -149,7 +179,7 @@ function proposalToDbUpdate(proposal: Record<string, any>) {
     additionalWork: proposal.additionalWork,
     highwayUse,
     isUrgent: proposal.isUrgent ?? false,
-  });
+  }, pricingCfg);
 
   // Combined display label e.g. "4tウイング"
   const vehicleType = `${proposal.vehicleSize}${proposal.vehicleBodyType}`;
@@ -213,7 +243,7 @@ router.post("/ai/start", requireAuth, async (req, res): Promise<void> => {
   });
 
   if (proposal) {
-    await db.update(shipmentsTable).set(proposalToDbUpdate(proposal)).where(eq(shipmentsTable.id, shipment.id));
+    await db.update(shipmentsTable).set(await proposalToDbUpdate(proposal)).where(eq(shipmentsTable.id, shipment.id));
   }
 
   res.json({ message: visibleMessage, shipmentId: shipment.id, isComplete: !!proposal, options: options || [] });
@@ -256,7 +286,7 @@ router.post("/shipments/:id/conversations", requireAuth, async (req, res): Promi
   });
 
   if (proposal) {
-    await db.update(shipmentsTable).set(proposalToDbUpdate(proposal)).where(eq(shipmentsTable.id, id));
+    await db.update(shipmentsTable).set(await proposalToDbUpdate(proposal)).where(eq(shipmentsTable.id, id));
   }
 
   res.json({ message: visibleMessage, shipmentId: id, isComplete: !!proposal, options: options || [] });
