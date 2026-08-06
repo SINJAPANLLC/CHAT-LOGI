@@ -310,6 +310,7 @@ export const UpdateShipmentBody = zod.object({
   "assignedDriverName": zod.string().optional(),
   "driverPhone": zod.string().optional(),
   "driverVehicleNumber": zod.string().optional(),
+  "driverCarrierName": zod.string().optional(),
   "paymentStatus": zod.string().optional(),
   "notes": zod.string().optional()
 })

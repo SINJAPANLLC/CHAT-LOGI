@@ -62,6 +62,7 @@ export default function AdminShipmentDetail() {
   const updateStatus = useUpdateShipmentStatus();
 
   const [editMode, setEditMode] = useState(false);
+  const [editInfoMode, setEditInfoMode] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [showInstruction, setShowInstruction] = useState(false);
   const [driverToken, setDriverToken] = useState<string | null>(null);
@@ -70,12 +71,24 @@ export default function AdminShipmentDetail() {
   React.useEffect(() => {
     if (shipment) {
       setFormData({
-        carrierCost: shipment.carrierCost || '',
-        assignedCarrierId: shipment.assignedCarrierId ? String(shipment.assignedCarrierId) : 'unassigned',
+        // 手配内容
+        driverCarrierName: (shipment as any).driverCarrierName || '',
         assignedDriverName: shipment.assignedDriverName || '',
         driverPhone: (shipment as any).driverPhone || '',
         driverVehicleNumber: (shipment as any).driverVehicleNumber || '',
-        notes: shipment.notes || ''
+        carrierCost: shipment.carrierCost || '',
+        notes: shipment.notes || '',
+        // 配送情報
+        pickupAddress: shipment.pickupAddress || '',
+        pickupDatetime: shipment.pickupDatetime || '',
+        deliveryAddress: shipment.deliveryAddress || '',
+        deliveryDeadline: shipment.deliveryDeadline || '',
+        cargoType: shipment.cargoType || '',
+        cargoQuantity: shipment.cargoQuantity || '',
+        cargoWeight: shipment.cargoWeight || '',
+        cargoSize: shipment.cargoSize || '',
+        vehicleType: shipment.vehicleType || '',
+        deliveryMethod: shipment.deliveryMethod || '',
       });
     }
   }, [shipment]);
@@ -101,12 +114,24 @@ export default function AdminShipmentDetail() {
   const handleSave = async () => {
     try {
       const payload: any = {
-        notes: formData.notes,
-        assignedDriverName: formData.assignedDriverName,
+        // 手配内容
+        driverCarrierName: formData.driverCarrierName || undefined,
+        assignedDriverName: formData.assignedDriverName || undefined,
         driverPhone: formData.driverPhone || undefined,
         driverVehicleNumber: formData.driverVehicleNumber || undefined,
         carrierCost: formData.carrierCost ? Number(formData.carrierCost) : undefined,
-        assignedCarrierId: formData.assignedCarrierId !== 'unassigned' ? Number(formData.assignedCarrierId) : null,
+        notes: formData.notes,
+        // 配送情報
+        pickupAddress: formData.pickupAddress || undefined,
+        pickupDatetime: formData.pickupDatetime || undefined,
+        deliveryAddress: formData.deliveryAddress || undefined,
+        deliveryDeadline: formData.deliveryDeadline || undefined,
+        cargoType: formData.cargoType || undefined,
+        cargoQuantity: formData.cargoQuantity || undefined,
+        cargoWeight: formData.cargoWeight || undefined,
+        cargoSize: formData.cargoSize || undefined,
+        vehicleType: formData.vehicleType || undefined,
+        deliveryMethod: formData.deliveryMethod || undefined,
       };
       await updateShipment.mutateAsync({ id: shipmentId, data: payload });
       queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
@@ -214,24 +239,89 @@ export default function AdminShipmentDetail() {
         <div className="lg:col-span-3 space-y-5">
 
           {/* 配送情報 */}
-          <Section title="配送情報">
-            <Row label="集荷先" value={
-              <span>
-                {shipment.pickupAddress}
-                <br />
-                <span className="text-xs text-muted-foreground font-normal">{shipment.pickupDatetime}</span>
-              </span>
-            } />
-            <Row label="納品先" value={
-              <span>
-                {shipment.deliveryAddress}
-                <br />
-                <span className="text-xs text-muted-foreground font-normal">{shipment.deliveryDeadline}</span>
-              </span>
-            } />
-            <Row label="荷物" value={[shipment.cargoType, shipment.cargoQuantity].filter(Boolean).join(' / ')} />
-            <Row label="重量・サイズ" value={[shipment.cargoWeight, shipment.cargoSize].filter(Boolean).join(' / ')} />
-            <Row label="車両・配送方法" value={[shipment.vehicleType, shipment.deliveryMethod].filter(Boolean).join(' / ')} />
+          <Section
+            title="配送情報"
+            action={
+              editInfoMode ? (
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setEditInfoMode(false)}>キャンセル</Button>
+                  <Button size="sm" onClick={handleSave} disabled={updateShipment.isPending}>
+                    <Save className="h-3.5 w-3.5 mr-1.5" />保存
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => setEditInfoMode(true)}>
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />編集
+                </Button>
+              )
+            }
+          >
+            {editInfoMode ? (
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5 col-span-2">
+                    <Label className="text-xs">集荷先住所</Label>
+                    <Input value={formData.pickupAddress} onChange={e => setFormData({...formData, pickupAddress: e.target.value})} placeholder="東京都〇〇区…" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">集荷日時</Label>
+                    <Input value={formData.pickupDatetime} onChange={e => setFormData({...formData, pickupDatetime: e.target.value})} placeholder="2024-11-01 10:00" />
+                  </div>
+                  <div className="space-y-1.5 col-span-2">
+                    <Label className="text-xs">納品先住所</Label>
+                    <Input value={formData.deliveryAddress} onChange={e => setFormData({...formData, deliveryAddress: e.target.value})} placeholder="大阪府〇〇市…" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">納品期限</Label>
+                    <Input value={formData.deliveryDeadline} onChange={e => setFormData({...formData, deliveryDeadline: e.target.value})} placeholder="2024-11-02 17:00" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">荷物の種類</Label>
+                    <Input value={formData.cargoType} onChange={e => setFormData({...formData, cargoType: e.target.value})} placeholder="パレット" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">数量</Label>
+                    <Input value={formData.cargoQuantity} onChange={e => setFormData({...formData, cargoQuantity: e.target.value})} placeholder="20枚" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">重量</Label>
+                    <Input value={formData.cargoWeight} onChange={e => setFormData({...formData, cargoWeight: e.target.value})} placeholder="500kg" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">サイズ</Label>
+                    <Input value={formData.cargoSize} onChange={e => setFormData({...formData, cargoSize: e.target.value})} placeholder="100×100×100cm" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">車両</Label>
+                    <Input value={formData.vehicleType} onChange={e => setFormData({...formData, vehicleType: e.target.value})} placeholder="4tウイング" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">配送方法</Label>
+                    <Input value={formData.deliveryMethod} onChange={e => setFormData({...formData, deliveryMethod: e.target.value})} placeholder="スポットチャーター" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <Row label="集荷先" value={
+                  <span>
+                    {shipment.pickupAddress}
+                    <br />
+                    <span className="text-xs text-muted-foreground font-normal">{shipment.pickupDatetime}</span>
+                  </span>
+                } />
+                <Row label="納品先" value={
+                  <span>
+                    {shipment.deliveryAddress}
+                    <br />
+                    <span className="text-xs text-muted-foreground font-normal">{shipment.deliveryDeadline}</span>
+                  </span>
+                } />
+                <Row label="荷物" value={[shipment.cargoType, shipment.cargoQuantity].filter(Boolean).join(' / ')} />
+                <Row label="重量・サイズ" value={[shipment.cargoWeight, shipment.cargoSize].filter(Boolean).join(' / ')} />
+                <Row label="車両・配送方法" value={[shipment.vehicleType, shipment.deliveryMethod].filter(Boolean).join(' / ')} />
+              </>
+            )}
           </Section>
 
           {/* 手配内容 */}
@@ -257,18 +347,11 @@ export default function AdminShipmentDetail() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-xs">運送会社</Label>
-                    <Select
-                      value={formData.assignedCarrierId}
-                      onValueChange={(v) => setFormData({ ...formData, assignedCarrierId: v })}
-                    >
-                      <SelectTrigger><SelectValue placeholder="未定" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="unassigned">未定</SelectItem>
-                        {carriers?.map(c => (
-                          <SelectItem key={c.id} value={String(c.id)}>{c.companyName}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      value={formData.driverCarrierName}
+                      onChange={(e) => setFormData({ ...formData, driverCarrierName: e.target.value })}
+                      placeholder="〇〇運輸"
+                    />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">ドライバー名</Label>
