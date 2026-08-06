@@ -143,19 +143,31 @@ function repairJson(raw: string): string {
     .trim();
 }
 
+function stripCodeBlock(raw: string): string {
+  // ```json ... ``` や ``` ... ``` を除去してJSON部分だけ返す
+  return raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+}
+
+function tryParseJson(raw: string): Record<string, any> | null {
+  const candidates = [raw, stripCodeBlock(raw), repairJson(raw), repairJson(stripCodeBlock(raw))];
+  for (const c of candidates) {
+    try { const r = JSON.parse(c); if (r && typeof r === 'object') return r; } catch { /* continue */ }
+  }
+  return null;
+}
+
 function extractProposal(content: string): Record<string, any> | null {
-  // 1) <proposal>…</proposal> タグを試みる
+  // 1) <proposal>…</proposal> タグを試みる（Markdownコードブロック含む）
   const tagMatch = content.match(/<proposal>([\s\S]*?)<\/proposal>/);
   if (tagMatch) {
-    const raw = tagMatch[1].trim();
-    try { return JSON.parse(raw); } catch { /* fall through */ }
-    try { return JSON.parse(repairJson(raw)); } catch { /* fall through */ }
+    const result = tryParseJson(tagMatch[1].trim());
+    if (result) return result;
   }
   // 2) タグなし：レスポンス全体から最初の {...} ブロックを探す
   const jsonMatch = content.match(/\{[\s\S]*"vehicleSize"[\s\S]*\}/);
   if (jsonMatch) {
-    try { return JSON.parse(jsonMatch[0]); } catch { /* fall through */ }
-    try { return JSON.parse(repairJson(jsonMatch[0])); } catch { /* fall through */ }
+    const result = tryParseJson(jsonMatch[0]);
+    if (result) return result;
   }
   return null;
 }
