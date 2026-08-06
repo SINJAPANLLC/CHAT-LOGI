@@ -191,7 +191,6 @@ export default function Proposal() {
               <span>配送費（税込）</span>
               <span>{price ? new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(Math.round(price * 1.1)) : '未定'}</span>
             </div>
-            <p className="text-xs text-muted-foreground pt-1">※ 配車確定時に与信確認のみ行います。お引き落としは納品完了後です。</p>
           </div>
 
           {cardError && (
