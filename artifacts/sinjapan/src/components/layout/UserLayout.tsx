@@ -4,7 +4,7 @@ import { Link, useLocation } from 'wouter';
 import { useGetMe, useLogout } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  Plus, Clock, LayoutDashboard, LogOut, Settings, Menu, X, FileText, Building2
+  Plus, Clock, LayoutDashboard, LogOut, Settings, Menu, X, FileText, Building2, MessageSquare
 } from 'lucide-react';
 
 export function UserLayout({ children }: { children: React.ReactNode }) {
@@ -59,6 +59,12 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
       <div className="px-2 pb-4 space-y-0.5">
         {user ? (
           <>
+            <Link href="/contact" onClick={() => setMobileOpen(false)}>
+              <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+                <MessageSquare className="h-4 w-4 shrink-0" />
+                お問い合わせ
+              </button>
+            </Link>
             <Link href="/settings" onClick={() => setMobileOpen(false)}>
               <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
                 <Settings className="h-4 w-4 shrink-0" />

@@ -35,6 +35,7 @@ import AdminFinance from '@/pages/admin/finance';
 import AdminNotifications from '@/pages/admin/notifications';
 
 // User Extra Pages
+import Contact from '@/pages/contact';
 import CorporateApply from '@/pages/corporate-apply';
 import Invoices from '@/pages/invoices';
 import InvoiceDetail from '@/pages/invoice-detail';
@@ -105,6 +106,9 @@ function Router() {
       </Route>
       <Route path="/settings">
         <UserLayout><Settings /></UserLayout>
+      </Route>
+      <Route path="/contact">
+        <UserLayout><Contact /></UserLayout>
       </Route>
       <Route path="/corporate-apply">
         <UserLayout><CorporateApply /></UserLayout>
