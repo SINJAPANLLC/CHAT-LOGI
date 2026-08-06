@@ -430,7 +430,7 @@ export default function Proposal() {
                   const allStops = isEditing ? editExtraStops : extraStops;
                   const idx = allStops.indexOf(s);
                   return (
-                    <div key={i} className="border-l-2 border-blue-200 pl-3">
+                    <div key={i} className="border-l-2 border-border pl-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs text-muted-foreground">集荷{i + 2}</span>
                         {isEditing && (
@@ -455,7 +455,7 @@ export default function Proposal() {
                 })}
                 {isEditing && (
                   <button onClick={() => setEditExtraStops([...editExtraStops, {type: 'pickup', address: '', datetime: ''}])}
-                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
+                    className="flex items-center gap-1 text-xs text-foreground hover:opacity-60 font-medium">
                     <Plus className="h-3.5 w-3.5" />集荷先を追加
                   </button>
                 )}
@@ -473,7 +473,7 @@ export default function Proposal() {
                   const allStops = isEditing ? editExtraStops : extraStops;
                   const idx = allStops.indexOf(s);
                   return (
-                    <div key={i} className="border-l-2 border-green-200 pl-3">
+                    <div key={i} className="border-l-2 border-border pl-3">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs text-muted-foreground">納品{i + 2}</span>
                         {isEditing && (
@@ -498,7 +498,7 @@ export default function Proposal() {
                 })}
                 {isEditing && (
                   <button onClick={() => setEditExtraStops([...editExtraStops, {type: 'delivery', address: '', datetime: ''}])}
-                    className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800 font-medium">
+                    className="flex items-center gap-1 text-xs text-foreground hover:opacity-60 font-medium">
                     <Plus className="h-3.5 w-3.5" />納品先を追加
                   </button>
                 )}
