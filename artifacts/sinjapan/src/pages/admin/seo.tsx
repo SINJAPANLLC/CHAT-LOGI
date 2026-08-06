@@ -1,0 +1,112 @@
+import React, { useState, useEffect } from 'react';
+import { Search, Save, Globe, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
+
+function apiFetch(path: string, opts?: RequestInit) {
+  const token = localStorage.getItem('sinjapan_auth_token');
+  return fetch(path, {
+    ...opts,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...opts?.headers },
+  }).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); });
+}
+
+type SeoField = { label: string; key: string; type: 'input' | 'textarea'; placeholder: string };
+
+const SEO_FIELDS: SeoField[] = [
+  { label: 'サイトタイトル',        key: 'title',          type: 'input',    placeholder: 'Chat LOGI | AI物流マッチング' },
+  { label: 'メタディスクリプション', key: 'description',    type: 'textarea', placeholder: 'AIが最適な配送プランを提案。リアルタイムで配送状況を確認できる次世代物流プラットフォーム。' },
+  { label: 'メタキーワード',         key: 'keywords',       type: 'input',    placeholder: '物流, 配送, AI, マッチング, 運送' },
+  { label: 'OGタイトル（SNS表示）', key: 'ogTitle',        type: 'input',    placeholder: 'Chat LOGI | AI物流マッチング' },
+  { label: 'OG説明文（SNS表示）',   key: 'ogDescription',  type: 'textarea', placeholder: 'AIが最適な配送プランを提案します。' },
+  { label: 'OG画像URL',            key: 'ogImage',        type: 'input',    placeholder: 'https://example.com/og-image.png' },
+  { label: 'Google Analyticsタグ', key: 'gaTag',          type: 'input',    placeholder: 'G-XXXXXXXXXX' },
+  { label: 'Googleサーチコンソール確認コード', key: 'gscCode', type: 'input', placeholder: 'google-site-verification=...' },
+  { label: 'robots.txt 内容',      key: 'robotsTxt',      type: 'textarea', placeholder: 'User-agent: *\nAllow: /' },
+];
+
+export default function AdminSeo() {
+  const { toast } = useToast();
+  const [values, setValues] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    apiFetch('/api/admin/seo')
+      .then(d => { setValues(d ?? {}); })
+      .catch(() => setValues({}))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await apiFetch('/api/admin/seo', { method: 'POST', body: JSON.stringify(values) });
+      toast({ title: 'SEO設定を保存しました' });
+    } catch {
+      toast({ title: '保存に失敗しました', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const set = (key: string, val: string) => setValues(prev => ({ ...prev, [key]: val }));
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-48">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+
+  return (
+    <div className="space-y-8 max-w-2xl">
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">SEO設定</h1>
+          <p className="text-muted-foreground mt-1 text-sm">サイトのメタ情報・アナリティクス設定を管理します。</p>
+        </div>
+        <Button onClick={handleSave} disabled={saving} className="bg-black text-white hover:bg-black/90">
+          {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />保存中…</> : <><Save className="h-4 w-4 mr-2" />保存</>}
+        </Button>
+      </div>
+
+      <div className="space-y-6">
+        {SEO_FIELDS.map(f => (
+          <div key={f.key} className="space-y-1.5">
+            <Label className="text-sm font-medium">{f.label}</Label>
+            {f.type === 'input' ? (
+              <Input
+                value={values[f.key] ?? ''}
+                onChange={e => set(f.key, e.target.value)}
+                placeholder={f.placeholder}
+              />
+            ) : (
+              <Textarea
+                value={values[f.key] ?? ''}
+                onChange={e => set(f.key, e.target.value)}
+                placeholder={f.placeholder}
+                className="resize-none min-h-[80px]"
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <h2 className="text-sm font-semibold mb-4 flex items-center gap-2"><Globe className="h-4 w-4" />プレビュー（Googleでの表示イメージ）</h2>
+        <div className="border border-border rounded-xl p-4 bg-muted/20 space-y-1">
+          <p className="text-[#1a0dab] text-base font-medium truncate">{values.title || 'Chat LOGI | AI物流マッチング'}</p>
+          <p className="text-[#006621] text-xs">https://chatlogi.jp</p>
+          <p className="text-sm text-muted-foreground line-clamp-2">{values.description || 'メタディスクリプションを入力してください。'}</p>
+        </div>
+      </div>
+
+      <Button onClick={handleSave} disabled={saving} className="bg-black text-white hover:bg-black/90">
+        {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />保存中…</> : <><Save className="h-4 w-4 mr-2" />保存する</>}
+      </Button>
+    </div>
+  );
+}

@@ -4,6 +4,7 @@ import { useGetMe, useLogout } from '@workspace/api-client-react';
 import {
   LayoutDashboard, Package, Truck, Users, CircleDollarSign,
   Loader2, ArrowLeft, FileText, BarChart3, Bell, Menu, X,
+  Mail, Search, MessageSquare,
 } from 'lucide-react';
 
 export function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -42,7 +43,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { href: '/admin/invoices',      label: '請求書払い申請',   icon: FileText },
     { href: '/admin/finance',       label: 'PL / BS / CF',    icon: BarChart3 },
     { href: '/admin/pricing',       label: '料金設定',         icon: CircleDollarSign },
-    { href: '/admin/notifications', label: '通知管理',         icon: Bell },
+    { href: '/admin/notifications',    label: '通知管理',     icon: Bell },
+    { href: '/admin/email-marketing', label: 'メール営業',    icon: Mail },
+    { href: '/admin/seo',             label: 'SEO',          icon: Search },
+    { href: '/admin/contacts',        label: 'お問い合わせ',  icon: MessageSquare },
   ];
 
   const NavContent = () => (
