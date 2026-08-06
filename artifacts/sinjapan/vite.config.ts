@@ -33,6 +33,20 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Reactコアを別チャンクに（ほぼ変わらないのでキャッシュが効く）
+          'vendor-react': ['react', 'react-dom'],
+          // UIライブラリ群
+          'vendor-ui': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select', '@radix-ui/react-tooltip', 'lucide-react'],
+          // データフェッチ
+          'vendor-query': ['@tanstack/react-query'],
+          // ルーティング
+          'vendor-router': ['wouter'],
+        },
+      },
+    },
   },
   server: {
     port,

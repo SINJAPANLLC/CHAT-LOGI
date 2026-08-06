@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -11,153 +12,169 @@ setAuthTokenGetter(() => localStorage.getItem('sinjapan_auth_token'));
 import { UserLayout } from '@/components/layout/UserLayout';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 
+// ── Lazy-loaded pages (code splitting) ────────────────────────────────────────
 // User Pages
-import Home from '@/pages/home';
-import Chat from '@/pages/chat';
-import Proposal from '@/pages/proposal';
-import Shipment from '@/pages/shipment';
-import Payment from '@/pages/payment';
-import History from '@/pages/history';
-import Settings from '@/pages/settings';
-import Login from '@/pages/login';
-import Register from '@/pages/register';
-import ForgotPassword from '@/pages/forgot-password';
-import ResetPassword from '@/pages/reset-password';
+const Home          = lazy(() => import('@/pages/home'));
+const Chat          = lazy(() => import('@/pages/chat'));
+const Proposal      = lazy(() => import('@/pages/proposal'));
+const Shipment      = lazy(() => import('@/pages/shipment'));
+const Payment       = lazy(() => import('@/pages/payment'));
+const History       = lazy(() => import('@/pages/history'));
+const Settings      = lazy(() => import('@/pages/settings'));
+const Login         = lazy(() => import('@/pages/login'));
+const Register      = lazy(() => import('@/pages/register'));
+const ForgotPassword = lazy(() => import('@/pages/forgot-password'));
+const ResetPassword = lazy(() => import('@/pages/reset-password'));
+const Contact       = lazy(() => import('@/pages/contact'));
+const CorporateApply = lazy(() => import('@/pages/corporate-apply'));
+const Invoices      = lazy(() => import('@/pages/invoices'));
+const InvoiceDetail = lazy(() => import('@/pages/invoice-detail'));
 
 // Admin Pages
-import Dashboard from '@/pages/admin/dashboard';
-import AdminShipments from '@/pages/admin/shipments';
-import AdminShipmentDetail from '@/pages/admin/shipment-detail';
-import AdminCarriers from '@/pages/admin/carriers';
-import AdminCustomers from '@/pages/admin/customers';
-import AdminPricing from '@/pages/admin/pricing';
-import AdminCorporate from '@/pages/admin/corporate';
-import AdminInvoices from '@/pages/admin/invoices';
-import AdminFinance from '@/pages/admin/finance';
-import AdminNotifications from '@/pages/admin/notifications';
-import AdminEmailMarketing from '@/pages/admin/email-marketing';
-import AdminSeo from '@/pages/admin/seo';
-import AdminContacts from '@/pages/admin/contacts';
+const Dashboard          = lazy(() => import('@/pages/admin/dashboard'));
+const AdminShipments     = lazy(() => import('@/pages/admin/shipments'));
+const AdminShipmentDetail = lazy(() => import('@/pages/admin/shipment-detail'));
+const AdminCarriers      = lazy(() => import('@/pages/admin/carriers'));
+const AdminCustomers     = lazy(() => import('@/pages/admin/customers'));
+const AdminPricing       = lazy(() => import('@/pages/admin/pricing'));
+const AdminCorporate     = lazy(() => import('@/pages/admin/corporate'));
+const AdminInvoices      = lazy(() => import('@/pages/admin/invoices'));
+const AdminFinance       = lazy(() => import('@/pages/admin/finance'));
+const AdminNotifications = lazy(() => import('@/pages/admin/notifications'));
+const AdminEmailMarketing = lazy(() => import('@/pages/admin/email-marketing'));
+const AdminSeo           = lazy(() => import('@/pages/admin/seo'));
+const AdminBlog          = lazy(() => import('@/pages/admin/blog'));
+const AdminContacts      = lazy(() => import('@/pages/admin/contacts'));
 
-// User Extra Pages
-import Contact from '@/pages/contact';
-import CorporateApply from '@/pages/corporate-apply';
-import Invoices from '@/pages/invoices';
-import InvoiceDetail from '@/pages/invoice-detail';
+// Blog & Public
+const BlogIndex    = lazy(() => import('@/pages/blog/index'));
+const BlogArticle  = lazy(() => import('@/pages/blog/article'));
+const LP           = lazy(() => import('@/pages/lp'));
+const DriverPortal = lazy(() => import('@/pages/driver-portal'));
 
-// Blog (public, no auth)
-import BlogIndex from '@/pages/blog/index';
-import BlogArticle from '@/pages/blog/article';
+// ── QueryClient with sensible cache times ─────────────────────────────────────
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,      // 30秒間はキャッシュを使いまわす（再フェッチしない）
+      gcTime: 5 * 60_000,     // 5分間はメモリ保持
+      retry: 1,
+      refetchOnWindowFocus: false, // タブ切替のたびにフェッチしない
+    },
+  },
+});
 
-// Admin: Blog
-import AdminBlog from '@/pages/admin/blog';
-
-// Public pages (no layout)
-import DriverPortal from '@/pages/driver-portal';
-import LP from '@/pages/lp';
-
-const queryClient = new QueryClient();
+// ── Suspense fallback ─────────────────────────────────────────────────────────
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 function Router() {
   return (
-    <Switch>
-      {/* Auth */}
-      <Route path="/login" component={Login} />
-      <Route path="/register" component={Register} />
-      <Route path="/forgot-password" component={ForgotPassword} />
-      <Route path="/reset-password" component={ResetPassword} />
+    <Suspense fallback={<PageLoader />}>
+      <Switch>
+        {/* Auth */}
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
 
-      {/* Admin */}
-      <Route path="/admin">
-        <AdminLayout><Dashboard /></AdminLayout>
-      </Route>
-      <Route path="/admin/shipments">
-        <AdminLayout><AdminShipments /></AdminLayout>
-      </Route>
-      <Route path="/admin/shipments/:id">
-        <AdminLayout><AdminShipmentDetail /></AdminLayout>
-      </Route>
-      <Route path="/admin/carriers">
-        <AdminLayout><AdminCarriers /></AdminLayout>
-      </Route>
-      <Route path="/admin/customers">
-        <AdminLayout><AdminCustomers /></AdminLayout>
-      </Route>
-      <Route path="/admin/pricing">
-        <AdminLayout><AdminPricing /></AdminLayout>
-      </Route>
-      <Route path="/admin/corporate">
-        <AdminLayout><AdminCorporate /></AdminLayout>
-      </Route>
-      <Route path="/admin/invoices">
-        <AdminLayout><AdminInvoices /></AdminLayout>
-      </Route>
-      <Route path="/admin/finance">
-        <AdminLayout><AdminFinance /></AdminLayout>
-      </Route>
-      <Route path="/admin/notifications">
-        <AdminLayout><AdminNotifications /></AdminLayout>
-      </Route>
-      <Route path="/admin/email-marketing">
-        <AdminLayout><AdminEmailMarketing /></AdminLayout>
-      </Route>
-      <Route path="/admin/seo">
-        <AdminLayout><AdminSeo /></AdminLayout>
-      </Route>
-      <Route path="/admin/blog">
-        <AdminLayout><AdminBlog /></AdminLayout>
-      </Route>
-      <Route path="/admin/contacts">
-        <AdminLayout><AdminContacts /></AdminLayout>
-      </Route>
+        {/* Admin */}
+        <Route path="/admin">
+          <AdminLayout><Dashboard /></AdminLayout>
+        </Route>
+        <Route path="/admin/shipments">
+          <AdminLayout><AdminShipments /></AdminLayout>
+        </Route>
+        <Route path="/admin/shipments/:id">
+          <AdminLayout><AdminShipmentDetail /></AdminLayout>
+        </Route>
+        <Route path="/admin/carriers">
+          <AdminLayout><AdminCarriers /></AdminLayout>
+        </Route>
+        <Route path="/admin/customers">
+          <AdminLayout><AdminCustomers /></AdminLayout>
+        </Route>
+        <Route path="/admin/pricing">
+          <AdminLayout><AdminPricing /></AdminLayout>
+        </Route>
+        <Route path="/admin/corporate">
+          <AdminLayout><AdminCorporate /></AdminLayout>
+        </Route>
+        <Route path="/admin/invoices">
+          <AdminLayout><AdminInvoices /></AdminLayout>
+        </Route>
+        <Route path="/admin/finance">
+          <AdminLayout><AdminFinance /></AdminLayout>
+        </Route>
+        <Route path="/admin/notifications">
+          <AdminLayout><AdminNotifications /></AdminLayout>
+        </Route>
+        <Route path="/admin/email-marketing">
+          <AdminLayout><AdminEmailMarketing /></AdminLayout>
+        </Route>
+        <Route path="/admin/seo">
+          <AdminLayout><AdminSeo /></AdminLayout>
+        </Route>
+        <Route path="/admin/blog">
+          <AdminLayout><AdminBlog /></AdminLayout>
+        </Route>
+        <Route path="/admin/contacts">
+          <AdminLayout><AdminContacts /></AdminLayout>
+        </Route>
 
-      {/* User */}
-      <Route path="/">
-        <UserLayout><Home /></UserLayout>
-      </Route>
-      <Route path="/chat/:id">
-        <UserLayout><Chat /></UserLayout>
-      </Route>
-      <Route path="/proposal/:id">
-        <UserLayout><Proposal /></UserLayout>
-      </Route>
-      <Route path="/shipment/:id">
-        <UserLayout><Shipment /></UserLayout>
-      </Route>
-      <Route path="/payment/:id">
-        <UserLayout><Payment /></UserLayout>
-      </Route>
-      <Route path="/history">
-        <UserLayout><History /></UserLayout>
-      </Route>
-      <Route path="/settings">
-        <UserLayout><Settings /></UserLayout>
-      </Route>
-      <Route path="/contact">
-        <UserLayout><Contact /></UserLayout>
-      </Route>
-      <Route path="/corporate-apply">
-        <UserLayout><CorporateApply /></UserLayout>
-      </Route>
-      <Route path="/invoices">
-        <UserLayout><Invoices /></UserLayout>
-      </Route>
-      <Route path="/invoices/:id">
-        <UserLayout><InvoiceDetail /></UserLayout>
-      </Route>
+        {/* User */}
+        <Route path="/">
+          <UserLayout><Home /></UserLayout>
+        </Route>
+        <Route path="/chat/:id">
+          <UserLayout><Chat /></UserLayout>
+        </Route>
+        <Route path="/proposal/:id">
+          <UserLayout><Proposal /></UserLayout>
+        </Route>
+        <Route path="/shipment/:id">
+          <UserLayout><Shipment /></UserLayout>
+        </Route>
+        <Route path="/payment/:id">
+          <UserLayout><Payment /></UserLayout>
+        </Route>
+        <Route path="/history">
+          <UserLayout><History /></UserLayout>
+        </Route>
+        <Route path="/settings">
+          <UserLayout><Settings /></UserLayout>
+        </Route>
+        <Route path="/contact">
+          <UserLayout><Contact /></UserLayout>
+        </Route>
+        <Route path="/corporate-apply">
+          <UserLayout><CorporateApply /></UserLayout>
+        </Route>
+        <Route path="/invoices">
+          <UserLayout><Invoices /></UserLayout>
+        </Route>
+        <Route path="/invoices/:id">
+          <UserLayout><InvoiceDetail /></UserLayout>
+        </Route>
 
-      {/* Blog — no auth, no layout */}
-      <Route path="/blog/:slug" component={BlogArticle} />
-      <Route path="/blog" component={BlogIndex} />
+        {/* Blog — no auth, no layout */}
+        <Route path="/blog/:slug" component={BlogArticle} />
+        <Route path="/blog" component={BlogIndex} />
 
-      {/* LP — no auth, no layout */}
-      <Route path="/lp" component={LP} />
+        {/* LP — no auth, no layout */}
+        <Route path="/lp" component={LP} />
 
-      {/* Driver portal — no auth, no layout */}
-      <Route path="/driver/:token" component={DriverPortal} />
+        {/* Driver portal — no auth, no layout */}
+        <Route path="/driver/:token" component={DriverPortal} />
 
-      <Route component={NotFound} />
-    </Switch>
+        <Route component={NotFound} />
+      </Switch>
+    </Suspense>
   );
 }
 
