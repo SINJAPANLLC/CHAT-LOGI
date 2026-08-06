@@ -10,8 +10,8 @@ async function getPaymentConfig() {
   return customFetch<{ squareApplicationId: string; squareLocationId: string; squareEnvironment: string }>('/api/config/payment');
 }
 
-async function squareAuthorize(shipmentId: number, sourceId: string) {
-  return customFetch<{ paymentId: string; status: string }>('/api/square/authorize', {
+async function squareCharge(shipmentId: number, sourceId: string) {
+  return customFetch<{ paymentId: string; status: string }>('/api/square/charge', {
     method: 'POST',
     body: JSON.stringify({ shipmentId, sourceId }),
   });
@@ -146,7 +146,7 @@ export default function Payment() {
     try {
       const result = await cardRef.current.tokenize();
       if (result.status !== 'OK') throw new Error(result.errors?.[0]?.message ?? 'カードのトークン化に失敗しました');
-      await squareAuthorize(shipmentId, result.token);
+      await squareCharge(shipmentId, result.token);
       setPaid(true);
     } catch (e: any) {
       setError(e.message);

@@ -98,8 +98,51 @@ router.post("/square/authorize-on-file/:shipmentId", requireAdmin, async (req, r
 });
 
 // POST /square/authorize
-// フロントエンドからsourceId（カードトークン）を受け取り、Squareで与信確保（オーソリ）
+// proposal画面：カードトークンで1円オーソリ（カード有効性確認のみ、即void）
 router.post("/square/authorize", requireAuth, async (req, res): Promise<void> => {
+  const { shipmentId, sourceId } = req.body;
+  if (!shipmentId || !sourceId) {
+    res.status(400).json({ error: "shipmentId と sourceId は必須です" });
+    return;
+  }
+
+  const [shipment] = await db.select().from(shipmentsTable).where(eq(shipmentsTable.id, Number(shipmentId))).limit(1);
+  if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+
+  // 1円でカード有効性確認（オーソリのみ）
+  const squareRes = await squareFetch("/v2/payments", "POST", {
+    source_id: sourceId,
+    idempotency_key: randomUUID(),
+    amount_money: { amount: 1, currency: "JPY" },
+    location_id: process.env.SQUARE_LOCATION_ID,
+    autocomplete: false,
+    note: `Chat LOGI カード確認 案件 #${shipment.id}`,
+  });
+
+  const data = await squareRes.json() as any;
+  if (!squareRes.ok) {
+    console.error("[Square] /v2/payments エラー status:", squareRes.status, "errors:", JSON.stringify(data.errors));
+    res.status(502).json({ error: squareErrorMessage(data.errors) });
+    return;
+  }
+
+  const paymentId = data.payment?.id;
+
+  // 1円オーソリは即void（仮押さえを解放）
+  await squareFetch(`/v2/payments/${paymentId}/cancel`, "POST", {});
+
+  // カード確認済みをDBに記録
+  await db.update(shipmentsTable).set({
+    paymentMethod: "card",
+    updatedAt: new Date(),
+  }).where(eq(shipmentsTable.id, Number(shipmentId)));
+
+  res.json({ status: "card_verified" });
+});
+
+// POST /square/charge
+// payment画面：配送完了後に実金額を即時決済（オーソリ＋キャプチャ同時）
+router.post("/square/charge", requireAuth, async (req, res): Promise<void> => {
   const { shipmentId, sourceId } = req.body;
   if (!shipmentId || !sourceId) {
     res.status(400).json({ error: "shipmentId と sourceId は必須です" });
@@ -115,18 +158,18 @@ router.post("/square/authorize", requireAuth, async (req, res): Promise<void> =>
   const totalAmount = baseAmount + taxAmount;
 
   if (totalAmount <= 0) {
-    res.status(400).json({ error: "請求金額が設定されていません" });
+    res.status(400).json({ error: "請求金額が設定されていません。管理者に確認してください。" });
     return;
   }
 
-  // 実金額を即時決済（autocomplete: true = オーソリ+キャプチャを同時に実行）
+  // 実金額を即時決済（autocomplete: true = オーソリ＋キャプチャ同時）
   const squareRes = await squareFetch("/v2/payments", "POST", {
     source_id: sourceId,
     idempotency_key: randomUUID(),
     amount_money: { amount: totalAmount, currency: "JPY" },
     location_id: process.env.SQUARE_LOCATION_ID,
     autocomplete: true,
-    note: `Chat LOGI 案件 #${shipment.id}`,
+    note: `Chat LOGI 決済 案件 #${shipment.id}`,
     buyer_email_address: req.session?.userEmail ?? undefined,
   });
 
