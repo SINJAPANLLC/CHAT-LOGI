@@ -436,13 +436,6 @@ export default function Proposal() {
                   {s.desiredPrice
                     ? <p className="font-medium">{fmt(s.desiredPrice)}<span className="text-xs text-muted-foreground ml-2">（お客様ご希望）</span></p>
                     : <p className="text-muted-foreground text-xs italic">未入力 — 「内容を編集」から入力できます</p>}
-                  {s.desiredPrice && price && (
-                    <p className={`text-xs mt-1 ${s.desiredPrice >= price ? 'text-green-600' : 'text-amber-600'}`}>
-                      {s.desiredPrice >= price
-                        ? `ご希望金額内でご提案できます（差額 ${fmt(s.desiredPrice - price)}）`
-                        : `ご希望より ${fmt(price - s.desiredPrice)} 高い見積もりです`}
-                    </p>
-                  )}
                 </div>
               )}
             </Row>
