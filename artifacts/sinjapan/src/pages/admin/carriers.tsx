@@ -63,13 +63,12 @@ function CarrierForm({ data, onChange, onSubmit, onCancel, isPending, submitLabe
   );
 }
 
-function Tag({ label, color = 'default' }: { label: string; color?: 'default' | 'blue' | 'green' }) {
-  const cls = {
-    default: 'bg-muted text-muted-foreground',
-    blue: 'bg-blue-50 text-blue-700 border border-blue-100',
-    green: 'bg-emerald-50 text-emerald-700 border border-emerald-100',
-  }[color];
-  return <span className={`inline-block text-[11px] font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
+function Tag({ label }: { label: string }) {
+  return (
+    <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
+      {label}
+    </span>
+  );
 }
 
 function CarrierRow({ c, onEdit }: { c: any; onEdit: (c: any) => void }) {
@@ -110,14 +109,14 @@ function CarrierRow({ c, onEdit }: { c: any; onEdit: (c: any) => void }) {
         {/* エリア */}
         <td className="px-4 py-3.5">
           <div className="flex flex-wrap gap-1 max-w-[220px]">
-            {areaTags.length ? areaTags.slice(0, 4).map(t => <Tag key={t} label={t} color="blue" />) : <span className="text-sm text-muted-foreground">—</span>}
+            {areaTags.length ? areaTags.slice(0, 4).map(t => <Tag key={t} label={t} />) : <span className="text-sm text-muted-foreground">—</span>}
             {areaTags.length > 4 && <span className="text-xs text-muted-foreground">+{areaTags.length - 4}</span>}
           </div>
         </td>
         {/* 車両 */}
         <td className="px-4 py-3.5">
           <div className="flex flex-wrap gap-1 max-w-[200px]">
-            {vehicleTags.length ? vehicleTags.slice(0, 3).map(t => <Tag key={t} label={t} color="green" />) : <span className="text-sm text-muted-foreground">—</span>}
+            {vehicleTags.length ? vehicleTags.slice(0, 3).map(t => <Tag key={t} label={t} />) : <span className="text-sm text-muted-foreground">—</span>}
             {vehicleTags.length > 3 && <span className="text-xs text-muted-foreground">+{vehicleTags.length - 3}</span>}
           </div>
         </td>
@@ -169,13 +168,13 @@ function CarrierRow({ c, onEdit }: { c: any; onEdit: (c: any) => void }) {
               {areaTags.length > 4 && (
                 <div className="col-span-2">
                   <div className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1"><MapPin className="h-3 w-3" />全対応エリア</div>
-                  <div className="flex flex-wrap gap-1">{areaTags.map(t => <Tag key={t} label={t} color="blue" />)}</div>
+                  <div className="flex flex-wrap gap-1">{areaTags.map(t => <Tag key={t} label={t} />)}</div>
                 </div>
               )}
               {vehicleTags.length > 3 && (
                 <div className="col-span-2">
                   <div className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1"><Truck className="h-3 w-3" />全保有車両</div>
-                  <div className="flex flex-wrap gap-1">{vehicleTags.map(t => <Tag key={t} label={t} color="green" />)}</div>
+                  <div className="flex flex-wrap gap-1">{vehicleTags.map(t => <Tag key={t} label={t} />)}</div>
                 </div>
               )}
               {c.notes && (
