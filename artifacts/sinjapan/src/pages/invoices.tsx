@@ -4,7 +4,7 @@ import { Building2, CheckCircle, Clock, XCircle, ChevronRight, FileText, AlertCi
 import { customFetch } from '@workspace/api-client-react/custom-fetch';
 
 const STATUS_BADGE: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
-  pending:   { label: '審査中',   cls: 'bg-yellow-100 text-yellow-700', icon: <Clock className="h-3.5 w-3.5" /> },
+  pending:   { label: '審査中',   cls: 'bg-black text-white', icon: <Clock className="h-3.5 w-3.5" /> },
   approved:  { label: '承認済み', cls: 'bg-green-100 text-green-700',   icon: <CheckCircle className="h-3.5 w-3.5" /> },
   rejected:  { label: '否決',     cls: 'bg-red-100 text-red-700',       icon: <XCircle className="h-3.5 w-3.5" /> },
   suspended: { label: '停止中',   cls: 'bg-gray-100 text-gray-600',     icon: <XCircle className="h-3.5 w-3.5" /> },
@@ -126,11 +126,11 @@ export default function Invoices() {
 
         {/* 審査中メッセージ */}
         {(isPending || success) && (
-          <div className="rounded-xl border border-yellow-200 bg-yellow-50 px-5 py-5 flex gap-3">
-            <Clock className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+          <div className="rounded-xl border border-black bg-black px-5 py-5 flex gap-3">
+            <Clock className="h-5 w-5 text-white shrink-0 mt-0.5" />
             <div>
-              <p className="font-semibold text-yellow-800">審査中です</p>
-              <p className="text-sm text-yellow-700 mt-0.5">通常2〜3営業日で審査結果をメールでご連絡します</p>
+              <p className="font-semibold text-white">審査中です</p>
+              <p className="text-sm text-white/70 mt-0.5">通常2〜3営業日で審査結果をメールでご連絡します</p>
             </div>
           </div>
         )}
