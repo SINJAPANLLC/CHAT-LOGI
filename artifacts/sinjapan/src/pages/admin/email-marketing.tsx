@@ -22,25 +22,27 @@ function apiFetch(path: string, opts?: RequestInit) {
 // ── HTML preview builder (ブラウザ側プレビュー用) ─────────────────────────────
 function buildPreviewHtml(subject: string, bodyText: string, ctaText: string) {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
-  const body = esc(bodyText).replace(/\{会社名\}/g, '<span style="background:#fffbe6;padding:0 2px">○○株式会社</span>').replace(/\{担当者名\}/g, '<span style="background:#fffbe6;padding:0 2px">田中様</span>');
+  // 冒頭の宛名行（{会社名} {担当者名}）は挨拶と重複するので除去
+  const stripped = bodyText.replace(/^[\s\S]*?\n\n/, '');
+  const body = esc(stripped).replace(/\{会社名\}/g, '<span style="background:#fffbe6;padding:0 2px">○○株式会社</span>').replace(/\{担当者名\}/g, '<span style="background:#fffbe6;padding:0 2px">田中様</span>');
   const headline = esc(subject.replace(/【Chat LOGI】\s*/g, ''));
-  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><style>body{margin:0;background:#f0f0f0;font-family:'Helvetica Neue',Arial,sans-serif}</style></head><body>
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f0f0;padding:24px 12px"><tr><td align="center">
-<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%">
-<tr><td style="background:#000;padding:22px 32px;border-radius:12px 12px 0 0">
+  const year = new Date().getFullYear();
+  return `<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;background:#f0f0f0;font-family:'Helvetica Neue',Arial,'Hiragino Kaku Gothic ProN',Meiryo,sans-serif}@media(max-width:600px){.wrap{padding:16px 8px!important}.inner{width:100%!important}.cell{padding:20px 18px!important}.feat td{display:block!important;width:100%!important;padding:0 0 12px!important}}</style></head><body>
+<table width="100%" cellpadding="0" cellspacing="0" class="wrap" style="background:#f0f0f0;padding:24px 12px"><tr><td align="center">
+<table class="inner" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%">
+<tr><td class="cell" style="background:#000;padding:20px 24px;border-radius:12px 12px 0 0">
   <span style="color:#fff;font-size:18px;font-weight:800;letter-spacing:1px">Chat LOGI</span>
 </td></tr>
-<tr><td style="background:#111;padding:28px 32px 20px">
-  <p style="margin:0;font-size:20px;font-weight:800;color:#fff;line-height:1.4">${headline}</p>
-  <p style="margin:10px 0 0;font-size:12px;color:#888">Chat LOGI よりご連絡いたします</p>
+<tr><td class="cell" style="background:#111;padding:24px 24px 18px">
+  <p style="margin:0;font-size:18px;font-weight:800;color:#fff;line-height:1.4">${headline}</p>
 </td></tr>
-<tr><td style="background:#fff;padding:28px 32px 20px">
-  <p style="margin:0 0 16px;font-size:13px;color:#333;font-weight:500">○○株式会社 ご担当者様</p>
-  <div style="font-size:14px;color:#333;line-height:2">${body}</div>
+<tr><td class="cell" style="background:#fff;padding:24px 24px 20px">
+  <p style="margin:0 0 14px;font-size:13px;color:#333;font-weight:500">○○株式会社 ご担当者様</p>
+  <div style="font-size:13px;color:#333;line-height:1.9">${body}</div>
 </td></tr>
-<tr><td style="background:#f7f7f7;padding:18px 32px;border-top:1px solid #eee;border-bottom:1px solid #eee">
+<tr><td class="cell" style="background:#f7f7f7;padding:16px 24px;border-top:1px solid #eee;border-bottom:1px solid #eee">
   <p style="margin:0 0 12px;font-size:10px;font-weight:700;color:#999;letter-spacing:1px">Chat LOGI の特長</p>
-  <table width="100%" cellpadding="0" cellspacing="0">
+  <table class="feat" width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td width="33%" style="padding-right:8px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">チャットで依頼</p><p style="margin:0;font-size:11px;color:#666">入力するだけ。最短即日手配。</p></td>
       <td width="33%" style="padding:0 4px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">プロが手配</p><p style="margin:0;font-size:11px;color:#666">Chat LOGIが手配します。</p></td>
@@ -48,14 +50,14 @@ function buildPreviewHtml(subject: string, bodyText: string, ctaText: string) {
     </tr>
   </table>
 </td></tr>
-<tr><td style="background:#fff;padding:24px 32px;text-align:center">
-  <div style="display:inline-block;background:#000;border-radius:8px;padding:14px 36px">
+<tr><td class="cell" style="background:#fff;padding:22px 24px;text-align:center">
+  <div style="display:inline-block;background:#000;border-radius:8px;padding:13px 32px">
     <span style="color:#fff;font-size:13px;font-weight:700">${ctaText || 'Chat LOGIを無料で試す →'}</span>
   </div>
 </td></tr>
-<tr><td style="background:#f7f7f7;padding:16px 32px;border-radius:0 0 12px 12px;border-top:1px solid #ebebeb">
+<tr><td class="cell" style="background:#f7f7f7;padding:14px 24px;border-radius:0 0 12px 12px;border-top:1px solid #ebebeb">
   <p style="margin:0 0 4px;font-size:10px;color:#bbb">このメールは Chat LOGI 営業チームより送信しています。</p>
-  <p style="margin:0;font-size:10px;color:#bbb">配信停止をご希望の場合はこのメールに返信ください。© ${new Date().getFullYear()} Chat LOGI</p>
+  <p style="margin:0;font-size:10px;color:#bbb">配信停止をご希望の場合はこのメールに返信ください。© ${year} Chat LOGI</p>
 </td></tr>
 </table></td></tr></table>
 </body></html>`;
@@ -66,17 +68,17 @@ const TEMPLATES = [
   {
     label: '新規ご挨拶',
     subject: '【Chat LOGI】はじめまして',
-    body: '{会社名} {担当者名}\n\nはじめまして。「Chat LOGI」と申します。\n\nChat LOGIはチャットで依頼するだけで、配車・手配をすべて代行するサービスです。\n貴社の物流業務をよりシンプルにできると考え、ご連絡いたしました。\n\nぜひ一度、詳細をご説明する機会をいただけますと幸いです。\n\nよろしくお願いいたします。',
+    body: 'はじめまして。「Chat LOGI」と申します。\n\nChat LOGIはチャットで依頼するだけで、配車・手配をすべて代行するサービスです。\n貴社の物流業務をよりシンプルにできると考え、ご連絡いたしました。\n\nぜひ一度、詳細をご説明する機会をいただけますと幸いです。\n\nよろしくお願いいたします。',
   },
   {
     label: 'サービス案内',
     subject: '【Chat LOGI】物流コスト削減のご提案',
-    body: '{会社名} {担当者名}\n\nお世話になっております。Chat LOGIでございます。\n\nAIによる最適ルート提案・リアルタイム配送管理により、\n配送コストを平均20%削減されている企業様が増えております。\n\n・AIチャットで即日見積もり\n・複数の運送会社から最安値を自動選定\n・ペーパーレスで書類管理もラクラク\n\n無料でお試しいただけますので、お気軽にご連絡ください。',
+    body: 'お世話になっております。Chat LOGIでございます。\n\nチャットで依頼するだけで、配車・手配をすべて代行するサービスです。\n\n・チャットで即日見積もり\n・複数の運送会社から最適提案\n・ペーパーレスで書類管理もラクラク\n\n無料でお試しいただけますので、お気軽にご連絡ください。',
   },
   {
     label: 'フォローアップ',
     subject: '【Chat LOGI】その後いかがでしょうか',
-    body: '{会社名} {担当者名}\n\nいつもお世話になっております。Chat LOGIでございます。\n\n先日はお時間をいただきありがとうございました。\nその後、弊社サービスのご検討はいかがでしょうか。\n\nご不明な点やご質問があれば、どうぞお気軽にご連絡ください。\n引き続きよろしくお願いいたします。',
+    body: 'いつもお世話になっております。Chat LOGIでございます。\n\n先日はお時間をいただきありがとうございました。\nその後、弊社サービスのご検討はいかがでしょうか。\n\nご不明な点やご質問があれば、どうぞお気軽にご連絡ください。\n引き続きよろしくお願いいたします。',
   },
   { label: 'カスタム', subject: '', body: '' },
 ];
