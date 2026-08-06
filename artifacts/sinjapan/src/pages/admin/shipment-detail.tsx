@@ -938,6 +938,8 @@ export default function AdminShipmentDetail() {
                   <span className="font-medium">{[shipment.cargoType, shipment.cargoQuantity].filter(Boolean).join(' / ') || '—'}</span>
                   <span className="text-muted-foreground">車両</span>
                   <span className="font-medium">{shipment.vehicleType || '—'}</span>
+                  <span className="text-muted-foreground">原価</span>
+                  <span className="font-medium">{shipment.carrierCost ? `¥ ${fmt(shipment.carrierCost)}` : '—'}</span>
                 </div>
                 {shipment.notes && (
                   <div className="pt-2 border-t border-border">
