@@ -162,10 +162,6 @@ export default function AdminShipmentDetail() {
     } finally { setGeneratingToken(false); }
   };
 
-  const handleSendInstruction = () => {
-    setShowInstruction(false);
-    toast({ title: '指示書を送付しました', description: `案件 #${shipment.id} の指示書を送付しました。` });
-  };
 
   const driverPortalUrl = driverToken
     ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}/driver/${driverToken}`
@@ -739,12 +735,8 @@ export default function AdminShipmentDetail() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
-              <Button variant="outline" onClick={() => setShowInstruction(false)}>キャンセル</Button>
-              <Button className="gap-2" onClick={handleSendInstruction}>
-                <Send className="h-4 w-4" />
-                送付する
-              </Button>
+            <div className="flex justify-end px-6 py-4 border-t border-border">
+              <Button variant="outline" onClick={() => setShowInstruction(false)}>閉じる</Button>
             </div>
           </div>
         </div>
