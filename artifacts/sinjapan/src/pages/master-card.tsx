@@ -89,11 +89,22 @@ export default function MasterCardPage() {
 
   const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
 
+  const autoPrint = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('print') === '1';
+
   useEffect(() => {
     if (!token) return;
     fetch(`${base}/api/master-card/${token}`)
       .then(r => r.ok ? r.json() : Promise.reject())
-      .then(d => { setCarrierName(d.carrierName); setLoading(false); })
+      .then(d => {
+        setCarrierName(d.carrierName);
+        // 提出済みデータがあればフォームに反映
+        if (d.masterCardData) {
+          setForm(prev => ({ ...prev, ...d.masterCardData }));
+        }
+        setLoading(false);
+        // ?print=1 なら自動印刷
+        if (autoPrint) setTimeout(() => window.print(), 600);
+      })
       .catch(() => { setInvalid(true); setLoading(false); });
   }, [token, base]);
 

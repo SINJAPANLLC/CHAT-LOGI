@@ -527,7 +527,19 @@ export default function AdminShipmentDetail() {
                     <FileText className="h-3.5 w-3.5" />
                     送信済みマスターカード
                   </div>
-                  {submittedAt && <span className="text-xs text-muted-foreground">{submittedAt}</span>}
+                  <div className="flex items-center gap-2">
+                    {submittedAt && <span className="text-xs text-muted-foreground">{submittedAt}</span>}
+                    {(shipment as any).driverToken && (
+                      <a
+                        href={`${window.location.origin}/master-card/${(shipment as any).driverToken}?print=1`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs px-2 py-1 rounded-md bg-foreground text-background hover:opacity-80 transition-opacity"
+                      >
+                        PDFで見る
+                      </a>
+                    )}
+                  </div>
                 </div>
                 <div className="divide-y divide-border/40">
                   {LABELS.filter(([k]) => mc[k]).map(([k, label]) => (
