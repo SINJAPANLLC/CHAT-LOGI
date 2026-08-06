@@ -2,6 +2,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { seedRequiredAccounts } from "./lib/seed";
 import { startScheduler } from "./lib/blogAutoGen";
+import { startAutoProspect } from "./lib/autoProspect";
 
 const port = Number(process.env.PORT ?? 8080);
 
@@ -18,4 +19,5 @@ app.listen(port, (err) => {
   logger.info({ port }, "Server listening");
   seedRequiredAccounts();
   startScheduler();
+  startAutoProspect();
 });

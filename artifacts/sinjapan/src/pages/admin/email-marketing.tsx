@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Mail, Send, Users, Plus, Trash2, Loader2, Upload,
-  List, History, ChevronDown, Check, Eye, X
+  List, History, ChevronDown, Check, Eye, X, Bot, RefreshCw, Clock, AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,6 +89,93 @@ type Prospect = {
   sentAt?: string; createdAt: string;
 };
 
+// ── 自動クロール ステータス表示 ───────────────────────────────────────────────
+function AutoCrawlPanel({ onRefresh }: { onRefresh: () => void }) {
+  const { toast } = useToast();
+  const [running, setRunning] = useState(false);
+  const [status, setStatus] = useState<{
+    ranAt: string; industry: string; prefecture: string;
+    found: number; sent: number; errors: string[];
+  } | null>(null);
+
+  const loadStatus = async () => {
+    try {
+      const s = await apiFetch('/api/admin/prospects/auto-crawl/status');
+      setStatus(s);
+    } catch { /* ignore */ }
+  };
+  useEffect(() => { loadStatus(); }, []);
+
+  const handleRun = async () => {
+    setRunning(true);
+    try {
+      await apiFetch('/api/admin/prospects/auto-crawl', { method: 'POST' });
+      toast({ title: '自動クロールを開始しました。数分後にリロードしてください。' });
+      // 30秒後にステータスと一覧を更新
+      setTimeout(() => { loadStatus(); onRefresh(); setRunning(false); }, 30_000);
+    } catch (e: any) {
+      toast({ title: e.message, variant: 'destructive' });
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-gradient-to-br from-muted/30 to-muted/10 p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Bot className="h-4 w-4 text-foreground" />
+          <span className="text-sm font-semibold">毎日自動クロール</span>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">毎朝9:00 JST</span>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleRun}
+          disabled={running}
+          className="gap-1.5 text-xs"
+        >
+          {running
+            ? <><Loader2 className="h-3 w-3 animate-spin" />実行中…</>
+            : <><RefreshCw className="h-3 w-3" />今すぐ実行</>}
+        </Button>
+      </div>
+
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        DuckDuckGo で荷主企業を検索 → AI が品質評価 → 5件を自動登録 → 未送信5件にAI個別メールを自動送信
+      </p>
+
+      {status ? (
+        <div className="bg-card rounded-lg border border-border p-3 space-y-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Clock className="h-3 w-3" />
+            前回: {new Date(status.ranAt).toLocaleString('ja-JP')}
+            　対象: {status.industry} / {status.prefecture}
+          </div>
+          <div className="flex gap-4 text-xs">
+            <span className="text-green-700 font-semibold">登録 {status.found}件</span>
+            <span className="text-blue-700 font-semibold">送信 {status.sent}件</span>
+            {status.errors.length > 0 && (
+              <span className="text-amber-600 font-semibold">エラー {status.errors.length}件</span>
+            )}
+          </div>
+          {status.errors.length > 0 && (
+            <details className="text-xs text-muted-foreground">
+              <summary className="flex items-center gap-1 cursor-pointer">
+                <AlertCircle className="h-3 w-3 text-amber-500" />エラー詳細
+              </summary>
+              <ul className="mt-1 space-y-0.5 pl-4">
+                {status.errors.slice(0, 5).map((e, i) => <li key={i}>・{e}</li>)}
+              </ul>
+            </details>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground italic">まだ実行されていません</p>
+      )}
+    </div>
+  );
+}
+
 // ── リスト管理タブ ─────────────────────────────────────────────────────────────
 function ProspectList({ onSelectForSend }: { onSelectForSend: (ids: number[]) => void }) {
   const { toast } = useToast();
@@ -168,6 +255,9 @@ function ProspectList({ onSelectForSend }: { onSelectForSend: (ids: number[]) =>
 
   return (
     <div className="space-y-4">
+      {/* 自動クロールパネル */}
+      <AutoCrawlPanel onRefresh={load} />
+
       {/* 統計 */}
       <div className="grid grid-cols-3 gap-3">
         {[['総数', total, ''], ['未送信', unsent, 'text-amber-600'], ['送信済', sent, 'text-green-600']].map(([label, val, cls]) => (
@@ -230,7 +320,16 @@ function ProspectList({ onSelectForSend }: { onSelectForSend: (ids: number[]) =>
                   <td className="px-3 py-3 text-center">
                     <input type="checkbox" checked={selected.includes(p.id)} onChange={() => toggle(p.id)} className="accent-foreground" />
                   </td>
-                  <td className="px-4 py-3 font-medium max-w-[180px] truncate">{p.companyName}</td>
+                  <td className="px-4 py-3 font-medium max-w-[200px]">
+                    <div className="flex items-center gap-1.5 truncate">
+                      {(p as any).notes?.startsWith('[自動取得]') && (
+                        <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-semibold text-violet-700 bg-violet-50 border border-violet-200 px-1.5 py-0.5 rounded-full">
+                          <Bot className="h-2.5 w-2.5" />AI
+                        </span>
+                      )}
+                      <span className="truncate">{p.companyName}</span>
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{p.contactName ?? '—'}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground max-w-[180px] truncate">{p.email}</td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{p.industry ?? '—'}</td>

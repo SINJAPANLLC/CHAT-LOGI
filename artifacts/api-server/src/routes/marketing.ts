@@ -4,6 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 import { openai } from "@workspace/integrations-openai-ai-server";
 import { sendEmail, buildSalesEmailHtml } from "../lib/email";
+import { runAutoProspect, lastRunLog } from "../lib/autoProspect";
 
 const router: IRouter = Router();
 
@@ -89,6 +90,18 @@ router.post("/admin/prospects/generate", requireAdmin, async (req, res): Promise
   }))).returning();
 
   res.json({ inserted: inserted.length, rows: inserted });
+});
+
+// ── 自動クロール（手動トリガー） ───────────────────────────────────────────────
+router.post("/admin/prospects/auto-crawl", requireAdmin, async (_req, res): Promise<void> => {
+  // バックグラウンド実行（レスポンスはすぐ返す）
+  res.json({ message: "自動クロールを開始しました。数分後にリストを確認してください。" });
+  runAutoProspect().catch(e => console.error("[AutoCrawl]", e.message));
+});
+
+// ── 自動クロール ステータス ────────────────────────────────────────────────────
+router.get("/admin/prospects/auto-crawl/status", requireAdmin, (_req, res): void => {
+  res.json(lastRunLog ?? null);
 });
 
 // ── 削除 ──────────────────────────────────────────────────────────────────────
