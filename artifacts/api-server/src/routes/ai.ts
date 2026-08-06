@@ -84,7 +84,7 @@ const DEFAULT_PROMPT = `あなたはChat LOGIの物流AIアシスタントです
 - additionalWork は付帯作業を日本語で（例：手積み・手降ろし、不要）
 - deliveryType は「スポット」または「定期」のどちらか
 
-## <proposal> JSONフォーマット（必須フィールド全て埋めること）
+## <proposal> JSONフォーマット（必須・フィールド名は必ずこの通りにすること）
 \`\`\`json
 {
   "vehicleSize": "2t",
@@ -100,9 +100,15 @@ const DEFAULT_PROMPT = `あなたはChat LOGIの物流AIアシスタントです
   "deliveryType": "スポット",
   "highwayUse": true,
   "isUrgent": false,
-  "notes": ""
+  "notes": "特になし"
 }
-\`\`\``;
+\`\`\`
+- **フィールド名は上記の通りに固定**（pickupDateTimeやcargo等の別名は使わない）
+- pickupDatetime / deliveryDatetime は必ず "YYYY-MM-DD HH:MM" 形式の文字列
+- cargoType は荷物の種類（例: パレット、段ボール、機械）
+- cargoQuantity は数量・荷姿（例: パレット20枚、段ボール50箱）
+- deliveryType は "スポット" または "定期" のどちらか（serviceTypeは使わない）
+- highwayUse は true または false（文字列不可）`;
 
 async function buildSystemPrompt(): Promise<string> {
   const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
@@ -181,10 +187,57 @@ async function buildMessages(history: { sender: string; message: string }[], new
   return msgs;
 }
 
+// AIが返すフィールド名のゆらぎを正規化するヘルパー
+function normalizeProposal(raw: Record<string, any>): Record<string, any> {
+  const p = { ...raw };
+
+  // --- 日時: 文字列 or {from, to} オブジェクト → 文字列に統一 ---
+  const toDateStr = (v: any): string | null => {
+    if (!v) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') return v.from ?? v.start ?? v.date ?? null;
+    return null;
+  };
+  // pickupDatetime / pickupDateTime / pickup_datetime など
+  p.pickupDatetime = toDateStr(p.pickupDatetime ?? p.pickupDateTime ?? p.pickup_datetime);
+  // deliveryDatetime / deliveryDateTime / deliveryDeadline など
+  p.deliveryDatetime = toDateStr(p.deliveryDatetime ?? p.deliveryDateTime ?? p.delivery_datetime ?? p.deliveryDeadline);
+
+  // --- 荷物: cargo / cargoInfo → cargoType + cargoQuantity ---
+  if (!p.cargoType && !p.cargoQuantity) {
+    const combined: string = p.cargo ?? p.cargoInfo ?? p.cargoDetails ?? '';
+    if (combined) {
+      // "標準パレット20枚（重量不明）" → type=パレット, qty=20枚
+      p.cargoType    = combined.replace(/[（(][^）)]*[）)]/g, '').trim() || combined;
+      p.cargoQuantity = combined;
+    }
+  }
+
+  // --- deliveryType: serviceType / service_type など ---
+  if (!p.deliveryType) {
+    const raw = p.serviceType ?? p.service_type ?? p.type ?? '';
+    if (raw.includes('定期')) p.deliveryType = '定期';
+    else if (raw) p.deliveryType = 'スポット';
+  }
+
+  // --- additionalWork: "なし"/"不要"/"none" → null ---
+  const aw = p.additionalWork ?? p.additional_work ?? p.additionalWorks ?? '';
+  if (/^(なし|不要|none|no|-)$/i.test(String(aw).trim())) p.additionalWork = '不要';
+  else if (aw) p.additionalWork = aw;
+
+  // --- highwayUse: 文字列 "true"/"あり" → boolean ---
+  const hw = p.highwayUse ?? p.highway_use ?? p.highway;
+  p.highwayUse = hw === true || hw === 'true' || hw === 'あり' || hw === 'yes';
+
+  return p;
+}
+
 // Apply proposal data to a DB update object, calculating price via the engine
-async function proposalToDbUpdate(proposal: Record<string, any>) {
+async function proposalToDbUpdate(rawProposal: Record<string, any>) {
+  const proposal = normalizeProposal(rawProposal);
+
   const truckCount = Number(proposal.truckCount) || 1;
-  const highwayUse = proposal.highwayUse === true || proposal.highwayUse === 'true';
+  const highwayUse = proposal.highwayUse === true;
 
   // DB から料金設定を読み込み（失敗時はデフォルト）
   let pricingCfg = DEFAULT_CONFIG;
@@ -205,30 +258,29 @@ async function proposalToDbUpdate(proposal: Record<string, any>) {
     isUrgent: proposal.isUrgent ?? false,
   }, pricingCfg);
 
-  // Combined display label e.g. "4tウイング"
-  const vehicleType = `${proposal.vehicleSize}${proposal.vehicleBodyType}`;
+  const vehicleType = `${proposal.vehicleSize ?? ''}${proposal.vehicleBodyType ?? ''}`.trim() || proposal.vehicleType;
 
   return {
     status: "見積提示" as const,
     vehicleType,
-    vehicleSize: proposal.vehicleSize ?? null,
-    vehicleBodyType: proposal.vehicleBodyType ?? null,
+    vehicleSize:      proposal.vehicleSize      ?? null,
+    vehicleBodyType:  proposal.vehicleBodyType  ?? null,
     truckCount,
-    deliveryType: proposal.deliveryType ?? null,
-    deliveryMethod: proposal.deliveryType === '定期' ? '定期チャーター' : 'スポットチャーター',
-    pickupAddress: proposal.pickupAddress ?? null,
-    pickupDatetime: proposal.pickupDatetime ?? null,
-    deliveryAddress: proposal.deliveryAddress ?? null,
+    deliveryType:     proposal.deliveryType     ?? null,
+    deliveryMethod:   proposal.deliveryType === '定期' ? '定期チャーター' : 'スポットチャーター',
+    pickupAddress:    proposal.pickupAddress    ?? null,
+    pickupDatetime:   proposal.pickupDatetime   ?? null,
+    deliveryAddress:  proposal.deliveryAddress  ?? null,
     deliveryDeadline: proposal.deliveryDatetime ?? null,
-    cargoType: proposal.cargoType ?? null,
-    cargoQuantity: proposal.cargoQuantity ?? null,
-    additionalWork: proposal.additionalWork ?? null,
-    highwayUse: highwayUse ? 'あり' : 'なし',
-    customerPrice: pricing.customerPrice.toString(),
-    carrierCost: pricing.carrierCost.toString(),
-    grossProfit: pricing.grossProfit.toString(),
-    notes: proposal.notes ?? null,
-    updatedAt: new Date(),
+    cargoType:        proposal.cargoType        ?? null,
+    cargoQuantity:    proposal.cargoQuantity    ?? null,
+    additionalWork:   proposal.additionalWork   ?? null,
+    highwayUse:       highwayUse ? 'あり' : 'なし',
+    customerPrice:    pricing.customerPrice.toString(),
+    carrierCost:      pricing.carrierCost.toString(),
+    grossProfit:      pricing.grossProfit.toString(),
+    notes:            proposal.notes            ?? null,
+    updatedAt:        new Date(),
   };
 }
 
