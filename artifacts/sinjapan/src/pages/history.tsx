@@ -140,7 +140,7 @@ export default function History() {
                         size="sm"
                         disabled={acting === shipment.id}
                         onClick={() => request(shipment.id, shipment.status)}
-                        className="w-full h-9 px-3 text-xs text-red-500 hover:text-red-600 hover:bg-red-50"
+                        className="w-full h-9 px-3 text-[11px] text-red-500 hover:text-red-600 hover:bg-red-50"
                       >
                         {acting === shipment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3 mr-1" />}
                         {IMMEDIATE_CANCEL.includes(shipment.status) ? 'キャンセル' : 'キャンセル申請'}
