@@ -64,7 +64,8 @@ export default function Invoices() {
       setSuccess(true);
       setCorporate((prev: any) => ({ ...prev, creditStatus: 'pending' }));
     } catch (e: any) {
-      setError(e.message ?? '申請に失敗しました');
+      const msg: string = e.message ?? '申請に失敗しました';
+      setError(msg.replace(/^HTTP\s+\d+[^:]*:\s*/i, ''));
     } finally {
       setSubmitting(false);
     }
