@@ -14,8 +14,9 @@ function apiFetch(path: string, opts?: RequestInit) {
 
 // ── 定数 ──────────────────────────────────────────────────────────────────────
 const VEHICLES = ['軽貨物', '1t', '2t', '4t', '10t', '大型'] as const;
-const TIERS = ['short', 'mid', 'long', 'xlong'] as const;
+const TIERS = ['local', 'short', 'mid', 'long', 'xlong'] as const;
 const TIER_LABELS: Record<string, string> = {
+  local: '近距離\n<30km',
   short: '短距離\n<100km',
   mid:   '中距離\n<300km',
   long:  '長距離\n<600km',
@@ -34,19 +35,19 @@ type PricingConfig = {
 };
 
 const DEFAULT: PricingConfig = {
-  margin: 0.30,
-  minPrice: 10000,
+  margin: 0.10,
+  minPrice: 5000,
   basePrice: {
-    '軽貨物': { short: 10000, mid: 16000, long: 22000, xlong: 32000 },
-    '1t':     { short: 18000, mid: 26000, long: 36000, xlong: 50000 },
-    '2t':     { short: 28000, mid: 40000, long: 55000, xlong: 75000 },
-    '4t':     { short: 45000, mid: 62000, long: 75000, xlong: 105000 },
-    '10t':    { short: 80000, mid: 105000, long: 140000, xlong: 190000 },
-    '大型':   { short: 120000, mid: 160000, long: 210000, xlong: 280000 },
+    '軽貨物': { local: 5000,  short: 10000, mid: 16000, long: 22000, xlong: 32000 },
+    '1t':     { local: 8000,  short: 18000, mid: 26000, long: 36000, xlong: 50000 },
+    '2t':     { local: 12000, short: 28000, mid: 40000, long: 55000, xlong: 75000 },
+    '4t':     { local: 20000, short: 45000, mid: 62000, long: 75000, xlong: 105000 },
+    '10t':    { local: 35000, short: 80000, mid: 105000, long: 140000, xlong: 190000 },
+    '大型':   { local: 50000, short: 120000, mid: 160000, long: 210000, xlong: 280000 },
   },
   bodyRate: { '平ボディ': 1.00, 'ウイング': 1.10, 'バン': 1.05, '冷凍冷蔵': 1.35, '幌': 1.05 },
   workFee:  { '手積み': 5000, '手降ろし': 5000, 'ラッシング': 3000, '養生': 5000, '搬入': 5000, '搬出': 5000 },
-  highwayFee: { short: 1500, mid: 4000, long: 8000, xlong: 14000 },
+  highwayFee: { local: 0, short: 1500, mid: 4000, long: 8000, xlong: 14000 },
 };
 
 // ── NumberInput ───────────────────────────────────────────────────────────────

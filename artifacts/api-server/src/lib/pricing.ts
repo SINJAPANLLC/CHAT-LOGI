@@ -44,8 +44,9 @@ function inferRegion(address: string): number | null {
 }
 
 // ── 距離帯 ────────────────────────────────────────────────────────────────────
-export type DistanceTier = 'short' | 'mid' | 'long' | 'xlong';
+export type DistanceTier = 'local' | 'short' | 'mid' | 'long' | 'xlong';
 export const DISTANCE_TIER_LABELS: Record<DistanceTier, string> = {
+  local: '近距離 (<30km)',
   short: '短距離 (<100km)',
   mid:   '中距離 (<300km)',
   long:  '長距離 (<600km)',
@@ -53,6 +54,7 @@ export const DISTANCE_TIER_LABELS: Record<DistanceTier, string> = {
 };
 
 function distanceTier(km: number): DistanceTier {
+  if (km < 30)  return 'local';
   if (km < 100) return 'short';
   if (km < 300) return 'mid';
   if (km < 600) return 'long';
@@ -65,7 +67,7 @@ export type BodyType = '平ボディ' | 'ウイング' | 'バン' | '冷凍冷�
 
 export const VEHICLE_SIZES: VehicleSize[] = ['軽貨物', '1t', '2t', '4t', '10t', '大型'];
 export const BODY_TYPES: BodyType[] = ['平ボディ', 'ウイング', 'バン', '冷凍冷蔵', '幌'];
-export const DISTANCE_TIERS: DistanceTier[] = ['short', 'mid', 'long', 'xlong'];
+export const DISTANCE_TIERS: DistanceTier[] = ['local', 'short', 'mid', 'long', 'xlong'];
 
 export interface PricingConfig {
   /** マージン率 (例: 0.30 = 30%) */
@@ -83,15 +85,15 @@ export interface PricingConfig {
 }
 
 export const DEFAULT_CONFIG: PricingConfig = {
-  margin: 0.15,
-  minPrice: 10000,
+  margin: 0.10,
+  minPrice: 5000,
   basePrice: {
-    軽貨物: { short: 10000, mid: 16000, long: 22000, xlong: 32000 },
-    '1t':   { short: 18000, mid: 26000, long: 36000, xlong: 50000 },
-    '2t':   { short: 28000, mid: 40000, long: 55000, xlong: 75000 },
-    '4t':   { short: 45000, mid: 62000, long: 75000, xlong: 105000 },
-    '10t':  { short: 80000, mid: 105000, long: 140000, xlong: 190000 },
-    大型:   { short: 120000, mid: 160000, long: 210000, xlong: 280000 },
+    軽貨物: { local: 5000,  short: 10000, mid: 16000, long: 22000, xlong: 32000 },
+    '1t':   { local: 8000,  short: 18000, mid: 26000, long: 36000, xlong: 50000 },
+    '2t':   { local: 12000, short: 28000, mid: 40000, long: 55000, xlong: 75000 },
+    '4t':   { local: 20000, short: 45000, mid: 62000, long: 75000, xlong: 105000 },
+    '10t':  { local: 35000, short: 80000, mid: 105000, long: 140000, xlong: 190000 },
+    大型:   { local: 50000, short: 120000, mid: 160000, long: 210000, xlong: 280000 },
   },
   bodyRate: {
     平ボディ: 1.00,
@@ -109,6 +111,7 @@ export const DEFAULT_CONFIG: PricingConfig = {
     搬出:       5000,
   },
   highwayFee: {
+    local: 0,
     short: 1500,
     mid:   4000,
     long:  8000,
@@ -126,7 +129,7 @@ export function parsePricingConfig(rows: { key: string; value: string }[]): Pric
     if (key === 'pricing_margin') { cfg.margin = num; continue; }
     if (key === 'pricing_min_price') { cfg.minPrice = num; continue; }
     // pricing_base_軽貨物_short など
-    const baseMatch = key.match(/^pricing_base_(.+)_(short|mid|long|xlong)$/);
+    const baseMatch = key.match(/^pricing_base_(.+)_(local|short|mid|long|xlong)$/);
     if (baseMatch) {
       const [, v, t] = baseMatch;
       if (cfg.basePrice[v as VehicleSize]) cfg.basePrice[v as VehicleSize][t as DistanceTier] = num;
@@ -147,7 +150,7 @@ export function parsePricingConfig(rows: { key: string; value: string }[]): Pric
       continue;
     }
     // pricing_highway_short など
-    const hwMatch = key.match(/^pricing_highway_(short|mid|long|xlong)$/);
+    const hwMatch = key.match(/^pricing_highway_(local|short|mid|long|xlong)$/);
     if (hwMatch) {
       const [, t] = hwMatch;
       cfg.highwayFee[t as DistanceTier] = num;
