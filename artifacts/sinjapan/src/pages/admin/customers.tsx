@@ -126,9 +126,9 @@ export default function AdminCustomers() {
         </div>
       </div>
 
-      <div className="flex gap-6 min-h-0">
+      <div className="relative">
         {/* テーブル */}
-        <div className={`flex-1 rounded-xl border border-border shadow-sm overflow-x-auto transition-all ${selected ? 'hidden lg:block' : ''}`}>
+        <div className="rounded-xl border border-border shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-muted/40 border-b border-border">
@@ -185,9 +185,12 @@ export default function AdminCustomers() {
           </table>
         </div>
 
-        {/* 右パネル */}
+        {/* 右パネル — fixedスライドイン */}
         {selected && (
-          <div className="w-full lg:w-96 shrink-0 bg-card border border-border rounded-xl shadow-sm flex flex-col max-h-[calc(100vh-12rem)] overflow-hidden">
+          <>
+            {/* オーバーレイ背景 */}
+            <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setSelected(null)} />
+            <div className="fixed top-0 right-0 z-40 h-full w-full sm:w-[420px] bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden">
             {/* ヘッダー */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <div>
@@ -301,7 +304,8 @@ export default function AdminCustomers() {
                 </>
               )}
             </div>
-          </div>
+            </div>
+          </>
         )}
       </div>
     </div>
