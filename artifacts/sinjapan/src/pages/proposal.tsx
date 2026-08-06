@@ -294,9 +294,16 @@ export default function Proposal() {
 
           {/* カード登録案内 */}
           {hasCard === false && (
-            <div className="px-6 py-3 bg-black border-t border-black flex items-center gap-2 text-xs text-white">
-              <CreditCard className="h-3.5 w-3.5 shrink-0" />
-              依頼確定後にお支払いカードの登録が必要です
+            <div className="px-6 py-3 bg-black border-t border-black text-xs text-white space-y-1">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                依頼確定後にお支払いカードの登録が必要です
+              </div>
+              <div className="pl-5">
+                <a href="/admin/invoices" className="underline underline-offset-2 text-white/70 hover:text-white transition-colors">
+                  法人請求書払い申請はこちら →
+                </a>
+              </div>
             </div>
           )}
           {hasCard === true && (
