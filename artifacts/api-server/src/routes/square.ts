@@ -5,6 +5,27 @@ import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { randomUUID } from "crypto";
 import { squareFetch, authorizeOnFile } from "../lib/square-authorize";
 
+const SQUARE_ERROR_MESSAGES: Record<string, string> = {
+  INVALID_CARD_DATA:              "カード情報が無効です。入力内容をご確認ください。",
+  PAN_FAILURE:                    "カード番号が正しくありません。入力内容をご確認ください。",
+  EXPIRATION_FAILURE:             "有効期限が正しくありません。",
+  CVV_FAILURE:                    "セキュリティコード（CVV）が正しくありません。",
+  CARD_EXPIRED:                   "カードの有効期限が切れています。",
+  INSUFFICIENT_FUNDS:             "残高が不足しています。別のカードをお試しください。",
+  TRANSACTION_LIMIT:              "カードの1回あたりの利用限度額を超えています。別のカードをお試しください。",
+  GENERIC_DECLINE:                "カードが拒否されました。カード会社にお問い合わせいただくか、別のカードをお試しください。",
+  DO_NOT_HONOR:                   "カードが拒否されました。カード会社にお問い合わせください。",
+  ADDRESS_VERIFICATION_FAILURE:   "住所の確認に失敗しました。",
+  CARD_NOT_SUPPORTED:             "このカードは対応していません。別のカードをお試しください。",
+  INVALID_ACCOUNT:                "カード情報が無効です。別のカードをお試しください。",
+  INVALID_EXPIRATION:             "有効期限が正しくありません。",
+};
+
+function squareErrorMessage(errors: any[]): string {
+  const code = errors?.[0]?.code;
+  return SQUARE_ERROR_MESSAGES[code] ?? "決済処理中にエラーが発生しました。しばらく待ってから再度お試しください。";
+}
+
 const router: IRouter = Router();
 
 // POST /square/register-card — 依頼承認時にカードを顧客として登録（Card on File）
@@ -31,7 +52,7 @@ router.post("/square/register-card", requireAuth, async (req, res): Promise<void
     const custData = await custRes.json() as any;
     if (!custRes.ok) {
       console.error("[Square] 顧客作成失敗:", JSON.stringify(custData.errors));
-      res.status(502).json({ error: "Square顧客作成失敗", detail: custData.errors });
+      res.status(502).json({ error: squareErrorMessage(custData.errors) });
       return;
     }
     customerId = custData.customer.id;
@@ -49,7 +70,7 @@ router.post("/square/register-card", requireAuth, async (req, res): Promise<void
   const cardData = await cardRes.json() as any;
   if (!cardRes.ok) {
     console.error("[Square] カード登録失敗 status:", cardRes.status, "errors:", JSON.stringify(cardData.errors));
-    res.status(502).json({ error: "Squareカード登録失敗", detail: cardData.errors });
+    res.status(502).json({ error: squareErrorMessage(cardData.errors) });
     return;
   }
 
@@ -100,7 +121,7 @@ router.post("/square/authorize", requireAuth, async (req, res): Promise<void> =>
   const data = await squareRes.json() as any;
   if (!squareRes.ok) {
     console.error("[Square] /v2/payments エラー status:", squareRes.status, "errors:", JSON.stringify(data.errors));
-    res.status(502).json({ error: "Square API エラー", detail: data.errors });
+    res.status(502).json({ error: squareErrorMessage(data.errors) });
     return;
   }
 
