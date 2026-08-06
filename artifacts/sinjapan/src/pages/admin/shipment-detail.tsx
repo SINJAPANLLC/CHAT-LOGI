@@ -443,6 +443,25 @@ export default function AdminShipmentDetail() {
         {/* 右カラム */}
         <div className="lg:col-span-2 space-y-5">
 
+          {/* お客様希望金額 */}
+          {(shipment as any).desiredPrice && (
+            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+              <div className="px-5 py-3 flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">お客様ご希望金額</span>
+                <div className="text-right">
+                  <span className="font-semibold text-sm">¥ {fmt((shipment as any).desiredPrice)}</span>
+                  {shipment.customerPrice && (
+                    <p className={`text-xs mt-0.5 ${Number((shipment as any).desiredPrice) >= Number(shipment.customerPrice) ? 'text-green-600' : 'text-amber-600'}`}>
+                      {Number((shipment as any).desiredPrice) >= Number(shipment.customerPrice)
+                        ? `見積もり内（差額 ¥${fmt(Number((shipment as any).desiredPrice) - Number(shipment.customerPrice))}）`
+                        : `見積もりより ¥${fmt(Number(shipment.customerPrice) - Number((shipment as any).desiredPrice))} 高い`}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 収益サマリー */}
           <div className="bg-primary text-primary-foreground rounded-xl shadow-sm overflow-hidden">
             <div className="px-5 py-4 border-b border-primary-foreground/10 flex items-center justify-between">
