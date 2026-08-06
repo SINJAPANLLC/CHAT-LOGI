@@ -481,6 +481,55 @@ export default function AdminShipmentDetail() {
             マスターカードを送付する
           </button>
 
+          {/* 送信済みマスターカード表示 */}
+          {(() => {
+            const raw = (shipment as any).masterCardData;
+            if (!raw) return null;
+            let mc: Record<string, string> = {};
+            try { mc = JSON.parse(raw); } catch { return null; }
+            const LABELS: [string, string][] = [
+              ['companyName', '会社名'],
+              ['companyKana', '会社名（フリガナ）'],
+              ['branchName', '支店名'],
+              ['address', '所在地'],
+              ['tel', 'TEL'],
+              ['fax', 'FAX'],
+              ['dispatchContact', '配車担当'],
+              ['accountingContact', '経理担当'],
+              ['representative', '代表者'],
+              ['closingDate', '締め日'],
+              ['paymentSite', '支払日サイト'],
+              ['bankName', '振込先銀行'],
+              ['accountType', '預金種別'],
+              ['accountHolder', '口座名義'],
+              ['qualifiedInvoice', '適格請求書'],
+              ['registrationNumber', '事業者登録番号'],
+              ['receiptAddress', '受領書送付先'],
+              ['insuranceCompany', '加入保険会社'],
+              ['vehicles', '保有車両'],
+            ];
+            const submittedAt = mc.submittedAt ? new Date(mc.submittedAt).toLocaleString('ja-JP') : null;
+            return (
+              <div className="rounded-xl border border-border bg-muted/20 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+                  <div className="flex items-center gap-2 text-sm font-semibold">
+                    <FileText className="h-3.5 w-3.5" />
+                    送信済みマスターカード
+                  </div>
+                  {submittedAt && <span className="text-xs text-muted-foreground">{submittedAt}</span>}
+                </div>
+                <div className="divide-y divide-border/40">
+                  {LABELS.filter(([k]) => mc[k]).map(([k, label]) => (
+                    <div key={k} className="flex justify-between items-start px-4 py-2.5 gap-3">
+                      <span className="text-xs text-muted-foreground shrink-0 w-28">{label}</span>
+                      <span className="text-xs font-medium text-right break-all">{mc[k]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* 値引き承認通知ボタン */}
           <button
             onClick={() => {

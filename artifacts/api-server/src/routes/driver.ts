@@ -149,6 +149,11 @@ router.post("/master-card/:token/submit", async (req, res): Promise<void> => {
 
   const d = req.body as Record<string, string>;
 
+  // DBに保存
+  await db.update(shipmentsTable)
+    .set({ masterCardData: JSON.stringify({ ...d, submittedAt: new Date().toISOString() }) } as any)
+    .where(eq(shipmentsTable.id, shipment.id));
+
   // 管理者へメール通知
   const rows = [
     ["NO", d.no],
