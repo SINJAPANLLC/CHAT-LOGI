@@ -35,10 +35,10 @@ type PricingConfig = {
 };
 
 const DEFAULT: PricingConfig = {
-  margin: 0.10,
-  minPrice: 5000,
+  margin: 0.15,
+  minPrice: 8000,
   basePrice: {
-    '軽貨物': { local: 5000,  short: 10000, mid: 16000, long: 22000, xlong: 32000 },
+    '軽貨物': { local: 7500,  short: 13000, mid: 16000, long: 22000, xlong: 32000 },
     '1t':     { local: 8000,  short: 18000, mid: 26000, long: 36000, xlong: 50000 },
     '2t':     { local: 12000, short: 28000, mid: 40000, long: 55000, xlong: 75000 },
     '4t':     { local: 20000, short: 45000, mid: 62000, long: 75000, xlong: 105000 },
