@@ -27,6 +27,8 @@ function formatShipment(s: any, user?: any, carrier?: any) {
     customerPrice: s.customerPrice ? Number(s.customerPrice) : null,
     carrierCost: s.carrierCost ? Number(s.carrierCost) : null,
     grossProfit: s.grossProfit ? Number(s.grossProfit) : null,
+    desiredPrice: s.desiredPrice ? Number(s.desiredPrice) : null,
+    truckCount: s.truckCount ? Number(s.truckCount) : null,
     createdAt: s.createdAt instanceof Date ? s.createdAt.toISOString() : s.createdAt,
     updatedAt: s.updatedAt instanceof Date ? s.updatedAt.toISOString() : s.updatedAt,
     user: user ? { ...user, createdAt: user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt } : null,

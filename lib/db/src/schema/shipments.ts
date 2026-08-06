@@ -76,6 +76,7 @@ export const shipmentsTable = pgTable("shipments", {
   squareCaptured: text("square_captured").default("false"),
   paymentMethod: text("payment_method").default("card"), // card/invoice
   cancelPreviousStatus: text("cancel_previous_status"),
+  desiredPrice: numeric("desired_price", { precision: 12, scale: 2 }),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

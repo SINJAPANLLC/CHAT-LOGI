@@ -78,7 +78,31 @@ const DEFAULT_PROMPT = `あなたはChat LOGIの物流AIアシスタントです
 - vehicleBodyType は次の中から選ぶ：平ボディ / ウイング / バン / 冷凍冷蔵 / 幌
 - truckCount は荷物量から推定する（ユーザーには聞かない）
 - highwayUse は true / false で出力する
-- isUrgent は集荷日が今日（{DATE}）の場合に true とする`;
+- isUrgent は集荷日が今日（{DATE}）の場合に true とする
+- cargoType は荷物の種類を日本語で入力（例：精密機器、食品、家具、建材）
+- cargoQuantity は物量・荷姿を日本語で入力（例：パレット10枚、段ボール50箱）
+- additionalWork は付帯作業を日本語で（例：手積み・手降ろし、不要）
+- deliveryType は「スポット」または「定期」のどちらか
+
+## <proposal> JSONフォーマット（必須フィールド全て埋めること）
+\`\`\`json
+{
+  "vehicleSize": "2t",
+  "vehicleBodyType": "平ボディ",
+  "truckCount": 1,
+  "pickupAddress": "東京都〇〇区〇〇1-1-1",
+  "pickupDatetime": "2026-08-07 10:00",
+  "deliveryAddress": "大阪府〇〇市〇〇1-1-1",
+  "deliveryDatetime": "2026-08-07 17:00",
+  "cargoType": "精密機器",
+  "cargoQuantity": "段ボール20箱",
+  "additionalWork": "不要",
+  "deliveryType": "スポット",
+  "highwayUse": true,
+  "isUrgent": false,
+  "notes": ""
+}
+\`\`\``;
 
 async function buildSystemPrompt(): Promise<string> {
   const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
