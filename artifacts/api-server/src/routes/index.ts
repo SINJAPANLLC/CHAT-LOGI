@@ -15,6 +15,7 @@ import invoicesRouter from "./invoices";
 import configRouter from "./config";
 import financeRouter from "./finance";
 import driverRouter from "./driver";
+import aiSettingsRouter from "./ai-settings";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(invoicesRouter);
 router.use(configRouter);
 router.use(financeRouter);
 router.use(driverRouter);
+router.use(aiSettingsRouter);
 
 export default router;

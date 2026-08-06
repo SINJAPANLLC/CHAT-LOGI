@@ -3,6 +3,7 @@ export * from "./carriers";
 export * from "./shipments";
 export * from "./conversations";
 export * from "./payments";
+export * from "./settings";
 export * from "./notifications";
 export * from "./pricing_rules";
 export * from "./invoices";

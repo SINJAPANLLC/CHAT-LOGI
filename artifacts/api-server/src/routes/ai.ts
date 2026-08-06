@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { db, shipmentsTable, conversationsTable } from "@workspace/db";
+import { db, shipmentsTable, conversationsTable, settingsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { StartAiChatBody, SendMessageBody } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
@@ -12,18 +12,12 @@ function parseId(raw: string | string[]): number {
   return parseInt(Array.isArray(raw) ? raw[0] : raw, 10);
 }
 
-// ── System prompt (injected with today's date) ──────────────────────────────
+// ── System prompt (DB優先、フォールバックはハードコード) ────────────────────
 
-function buildSystemPrompt(): string {
-  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
-  const dateStr = jst.toISOString().slice(0, 10);
-  const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
-  const dayOfWeek = dayNames[jst.getUTCDay()];
-
-  return `あなたはChat LOGIの物流AIアシスタントです。日本語で丁寧かつ簡潔に応答してください。
+const DEFAULT_PROMPT = `あなたはChat LOGIの物流AIアシスタントです。日本語で丁寧かつ簡潔に応答してください。
 
 ## 今日の日付
-今日は ${dateStr}（${dayOfWeek}曜日）です。「明日」「来週」などはこの日付を基準に計算し、提案では必ず「YYYY-MM-DD HH:MM」形式で出力してください。
+今日は {DATE}（{WEEKDAY}曜日）です。「明日」「来週」などはこの日付を基準に計算し、提案では必ず「YYYY-MM-DD HH:MM」形式で出力してください。
 
 ---
 
@@ -34,35 +28,33 @@ function buildSystemPrompt(): string {
 
 ---
 
-### ✅ フェーズ1：ルート・日程（4項目）
+### フェーズ1：ルート・日程（4項目）
 
-下記を上から順に、未回答のものを1つずつ聞く。
+1. 集荷先の住所（番地まで）
+2. 集荷日時（日付と希望時間帯）
+3. 納品先の住所（番地まで）
+4. 納品希望日時
 
-1. **集荷先の住所**（番地まで。例：東京都渋谷区恵比寿1-2-3）
-2. **集荷日時**（日付と希望時間帯）
-3. **納品先の住所**（番地まで。例：大阪府大阪市北区梅田2-4-5）
-4. **納品希望日時**（日付と希望時間帯）
-
-→ 4項目がすべて揃ったらフェーズ2へ進む。
+→ 4項目が揃ったらフェーズ2へ進む。
 
 ---
 
-### ✅ フェーズ2：荷物情報（2項目）
+### フェーズ2：荷物情報（2項目）
 
-5. **物量・荷姿**（例：パレット10枚、段ボール50箱、機械1台）
-6. **付帯作業の有無**（手積み・手降ろし・ラッシング・養生・搬入出など）
+5. 物量・荷姿（例：パレット10枚、段ボール50箱、機械1台）
+6. 付帯作業の有無（手積み・手降ろし・ラッシング・養生・搬入出など）
 
-→ 2項目がすべて揃ったらフェーズ3へ進む。
+→ 2項目が揃ったらフェーズ3へ進む。
 
 ---
 
-### ✅ フェーズ3：条件確認（3項目）→ プラン提案
+### フェーズ3：条件確認（3項目）→ プラン提案
 
-7. **スポット便（単発）か定期便（繰り返し）か**
-8. **高速道路の利用有無**
-9. **備考・特記事項**（入構証の有無・フロア・時間指定・担当者への申し送りなど。「特になし」でもOK）
+7. スポット便（単発）か定期便（繰り返し）か
+8. 高速道路の利用有無
+9. 備考・特記事項（入構証・フロア・時間指定など。「特になし」でもOK）
 
-→ **9番まで揃ったその返答で、必ず <proposal> タグを出力する。いかなる理由があっても出力を省略してはならない。**
+→ 9番まで揃ったその返答で、必ず <proposal> タグを出力する。いかなる理由があっても出力を省略してはならない。
 
 ---
 
@@ -70,7 +62,7 @@ function buildSystemPrompt(): string {
 すべての質問で必ず選択肢を出力すること：
 <options>["選択肢A", "選択肢B", "選択肢C"]</options>
 
-集荷日の例：<options>["今日（${dateStr}）", "明日", "明後日", "来週以降", "日程未定"]</options>
+集荷日の例：<options>["今日（{DATE}）", "明日", "明後日", "来週以降", "日程未定"]</options>
 荷姿の例：<options>["パレット", "段ボール箱", "機械・設備", "バラ積み", "その他"]</options>
 付帯作業の例：<options>["不要", "手積み・手降ろし", "ラッシング・養生", "搬入・搬出あり", "複数あり"]</options>
 スポット/定期の例：<options>["スポット（今回のみ）", "定期（繰り返し利用）"]</options>
@@ -86,26 +78,25 @@ function buildSystemPrompt(): string {
 - vehicleBodyType は次の中から選ぶ：平ボディ / ウイング / バン / 冷凍冷蔵 / 幌
 - truckCount は荷物量から推定する（ユーザーには聞かない）
 - highwayUse は true / false で出力する
-- isUrgent は集荷日が今日（${dateStr}）の場合に true とする
+- isUrgent は集荷日が今日（{DATE}）の場合に true とする`;
 
-<proposal>
-{
-  "vehicleSize": "4t",
-  "vehicleBodyType": "ウイング",
-  "truckCount": 1,
-  "deliveryType": "スポット",
-  "pickupAddress": "東京都渋谷区恵比寿1-2-3",
-  "pickupDatetime": "${dateStr} 09:00",
-  "deliveryAddress": "大阪府大阪市北区梅田2-4-5",
-  "deliveryDatetime": "${new Date(Date.now() + 9*60*60*1000 + 86400000).toISOString().slice(0,10)} 12:00",
-  "cargoType": "段ボール箱",
-  "cargoQuantity": "50箱",
-  "additionalWork": "手積み・手降ろしあり",
-  "highwayUse": true,
-  "isUrgent": false,
-  "notes": "2階への搬入あり。入構証が必要。"
-}
-</proposal>`;
+async function buildSystemPrompt(): Promise<string> {
+  const jst = new Date(Date.now() + 9 * 60 * 60 * 1000);
+  const dateStr = jst.toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 9 * 60 * 60 * 1000 + 86400000).toISOString().slice(0, 10);
+  const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+  const dayOfWeek = dayNames[jst.getUTCDay()];
+
+  let template = DEFAULT_PROMPT;
+  try {
+    const [row] = await db.select().from(settingsTable).where(eq(settingsTable.key, "ai_system_prompt"));
+    if (row?.value) template = row.value;
+  } catch { /* DBエラー時はデフォルトを使用 */ }
+
+  return template
+    .replace(/\{DATE\}/g, dateStr)
+    .replace(/\{WEEKDAY\}/g, dayOfWeek)
+    .replace(/\{TOMORROW\}/g, tomorrow);
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
@@ -132,9 +123,9 @@ function stripTags(content: string): string {
     .trim();
 }
 
-function buildMessages(history: { sender: string; message: string }[], newUserMsg?: string) {
+async function buildMessages(history: { sender: string; message: string }[], newUserMsg?: string) {
   const msgs: { role: "user" | "assistant" | "system"; content: string }[] = [
-    { role: "system", content: buildSystemPrompt() },
+    { role: "system", content: await buildSystemPrompt() },
   ];
   for (const h of history) {
     msgs.push({ role: h.sender === "user" ? "user" : "assistant", content: h.message });
@@ -206,7 +197,7 @@ router.post("/ai/start", requireAuth, async (req, res): Promise<void> => {
   const completion = await openai.chat.completions.create({
     model: "gpt-5.6-luna",
     max_completion_tokens: 1024,
-    messages: buildMessages([], message),
+    messages: await buildMessages([], message),
   });
 
   const aiMessage = completion.choices[0]?.message?.content ?? "申し訳ありません。エラーが発生しました。";
@@ -249,7 +240,7 @@ router.post("/shipments/:id/conversations", requireAuth, async (req, res): Promi
   const completion = await openai.chat.completions.create({
     model: "gpt-5.6-luna",
     max_completion_tokens: 1024,
-    messages: buildMessages(history, message),
+    messages: await buildMessages(history, message),
   });
 
   const aiMessage = completion.choices[0]?.message?.content ?? "申し訳ありません。エラーが発生しました。";

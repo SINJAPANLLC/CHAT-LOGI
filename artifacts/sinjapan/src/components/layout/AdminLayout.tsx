@@ -42,7 +42,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     { href: '/admin/customers',     label: 'ユーザー管理',     icon: Users },
     { href: '/admin/invoices',      label: '請求書払い申請',   icon: FileText },
     { href: '/admin/finance',       label: 'PL / BS / CF',    icon: BarChart3 },
-    { href: '/admin/pricing',       label: '料金設定',         icon: CircleDollarSign },
+    { href: '/admin/pricing',       label: 'AIプロンプト',      icon: CircleDollarSign },
     { href: '/admin/notifications',    label: '通知管理',     icon: Bell },
     { href: '/admin/email-marketing', label: 'メール営業',    icon: Mail },
     { href: '/admin/seo',             label: 'SEO',          icon: Search },
