@@ -23,9 +23,11 @@ router.get("/dashboard/stats", requireAdmin, async (_req, res): Promise<void> =>
   for (const s of allShipments) {
     statusCounts[s.status] = (statusCounts[s.status] || 0) + 1;
     if (CONFIRMED_STATUSES.includes(s.status)) {
-      if (s.customerPrice) totalRevenue += Number(s.customerPrice);
-      if (s.carrierCost) totalCost += Number(s.carrierCost);
-      if (s.grossProfit) grossProfit += Number(s.grossProfit);
+      const price = s.customerPrice ? Number(s.customerPrice) : 0;
+      const cost  = s.carrierCost  ? Number(s.carrierCost)  : 0;
+      totalRevenue += price;
+      totalCost    += cost;
+      grossProfit  += price - cost; // 保存値ではなくライブ計算
     }
   }
 
