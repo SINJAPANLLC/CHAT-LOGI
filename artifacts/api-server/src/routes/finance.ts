@@ -61,7 +61,8 @@ router.get("/admin/finance/pl/shipments", requireAdmin, async (req, res): Promis
     // 顧客
     userName:        usersTable.name,
     companyName:     usersTable.companyName,
-    // 運送会社
+    // 運送会社（自由入力 or マスタJOIN）
+    driverCarrierName: (shipmentsTable as any).driverCarrierName,
     carrierName:     carriersTable.companyName,
   }).from(shipmentsTable)
     .leftJoin(usersTable,    eq(shipmentsTable.userId, usersTable.id))
@@ -74,6 +75,7 @@ router.get("/admin/finance/pl/shipments", requireAdmin, async (req, res): Promis
 
   res.json(rows.map(r => ({
     ...r,
+    carrierName:   (r as any).driverCarrierName || r.carrierName,
     customerPrice: Number(r.customerPrice ?? 0),
     carrierCost:   Number(r.carrierCost ?? 0),
     grossProfit:   Number(r.customerPrice ?? 0) - Number(r.carrierCost ?? 0),
