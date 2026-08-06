@@ -279,10 +279,10 @@ function SendHistory() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-card">
-              {Object.entries(grouped).map(([key, items]) => {
+              {(Object.entries(grouped) as [string, any[]][]).map(([key, items]) => {
                 const first = items[0];
-                const readCount = items.filter(i => i.readStatus).length;
-                const recipients = items.map(i => i.companyName || i.userName).filter(Boolean).join('、');
+                const readCount = items.filter((i: any) => i.readStatus).length;
+                const recipients = items.map((i: any) => i.companyName || i.userName).filter(Boolean).join('、');
                 return (
                   <tr key={key} className="hover:bg-muted/20 transition-colors align-top">
                     <td className="px-5 py-3.5 font-medium max-w-[200px]">

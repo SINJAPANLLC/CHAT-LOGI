@@ -111,7 +111,7 @@ export default function BlogIndex() {
                         <span style={{ color: '#888', fontSize: 12 }}>
                           {featured.publishedAt ? format(new Date(featured.publishedAt), 'yyyy年MM月dd日', { locale: ja }) : ''}
                         </span>
-                        <span style={{ color: '#888', fontSize: 12 }}>約{readingTime(featured.content ?? featured.excerpt)}分で読める</span>
+                        <span style={{ color: '#888', fontSize: 12 }}>約{readingTime((featured as any).content ?? featured.excerpt)}分で読める</span>
                       </div>
                     </div>
                     {/* 右：抜粋 */}

@@ -174,7 +174,7 @@ export default function AdminCustomers() {
               ) : !filtered?.length ? (
                 <tr><td colSpan={8} className="py-16 text-center text-muted-foreground text-sm">ユーザーが見つかりません</td></tr>
               ) : filtered.map(user => {
-                const credit = creditBadge(user.creditStatus || 'none');
+                const credit = creditBadge((user as any).creditStatus || 'none');
                 return (
                   <tr
                     key={user.id}
