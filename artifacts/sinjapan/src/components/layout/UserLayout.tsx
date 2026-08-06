@@ -199,11 +199,6 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           {/* Auth buttons — not logged in only */}
           {!isLoggedIn && !hasToken && (
             <div className="flex items-center gap-2">
-              <Link href="/contact">
-                <button className="text-sm font-medium px-4 py-1.5 rounded-full hover:bg-muted transition-colors text-muted-foreground">
-                  お問い合わせ
-                </button>
-              </Link>
               <Link href="/login">
                 <button className="text-sm font-medium px-4 py-1.5 rounded-full hover:bg-muted transition-colors">
                   ログイン
