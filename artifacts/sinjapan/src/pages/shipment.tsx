@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRoute, Link } from 'wouter';
 import { useGetShipment, getGetShipmentQueryKey, useListConversations } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -26,6 +26,18 @@ export default function Shipment() {
   const [showChat, setShowChat] = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [extraStops, setExtraStops] = useState<{type: string; address: string; datetime: string}[]>([]);
+
+  useEffect(() => {
+    if (!shipmentId) return;
+    const token = localStorage.getItem('sinjapan_auth_token');
+    fetch(`/api/shipments/${shipmentId}/stops`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.stops) setExtraStops(d.stops); })
+      .catch(() => {});
+  }, [shipmentId]);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -158,20 +170,38 @@ export default function Shipment() {
                 <div className="divide-y divide-border/50">
                   
                   <div className="p-4 grid grid-cols-3 gap-4">
-                    <div className="text-sm text-muted-foreground">集荷先</div>
+                    <div className="text-sm text-muted-foreground">集荷先①</div>
                     <div className="col-span-2 text-sm font-medium">
                       {shipment.pickupAddress}
                       <div className="text-xs text-muted-foreground font-normal mt-1">{shipment.pickupDatetime}</div>
                     </div>
                   </div>
+                  {extraStops.filter((s: any) => s.type === 'pickup').map((s: any, i: number) => (
+                    <div key={i} className="p-4 grid grid-cols-3 gap-4">
+                      <div className="text-sm text-muted-foreground">集荷先{i + 2}</div>
+                      <div className="col-span-2 text-sm font-medium">
+                        {s.address}
+                        <div className="text-xs text-muted-foreground font-normal mt-1">{s.datetime}</div>
+                      </div>
+                    </div>
+                  ))}
 
                   <div className="p-4 grid grid-cols-3 gap-4">
-                    <div className="text-sm text-muted-foreground">納品先</div>
+                    <div className="text-sm text-muted-foreground">納品先①</div>
                     <div className="col-span-2 text-sm font-medium">
                       {shipment.deliveryAddress}
                       <div className="text-xs text-muted-foreground font-normal mt-1">{shipment.deliveryDeadline}</div>
                     </div>
                   </div>
+                  {extraStops.filter((s: any) => s.type === 'delivery').map((s: any, i: number) => (
+                    <div key={i} className="p-4 grid grid-cols-3 gap-4">
+                      <div className="text-sm text-muted-foreground">納品先{i + 2}</div>
+                      <div className="col-span-2 text-sm font-medium">
+                        {s.address}
+                        <div className="text-xs text-muted-foreground font-normal mt-1">{s.datetime}</div>
+                      </div>
+                    </div>
+                  ))}
 
                   <div className="p-4 grid grid-cols-3 gap-4">
                     <div className="text-sm text-muted-foreground">荷物</div>

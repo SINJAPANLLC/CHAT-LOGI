@@ -9,7 +9,8 @@ import { sql } from "drizzle-orm";
 async function runMigrations() {
   try {
     await db.execute(sql`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS master_card_data TEXT`);
-    logger.info("migration: master_card_data column ready");
+    await db.execute(sql`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS stops_json TEXT`);
+    logger.info("migration: master_card_data / stops_json columns ready");
   } catch (e: any) {
     logger.warn({ err: e.message }, "migration warning (non-fatal)");
   }

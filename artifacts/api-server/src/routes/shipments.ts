@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { db, shipmentsTable, usersTable, carriersTable } from "@workspace/db";
-import { eq, desc, and, gte, lte, inArray } from "drizzle-orm";
+import { eq, desc, and, gte, lte, inArray, sql } from "drizzle-orm";
 import {
   CreateShipmentBody,
   UpdateShipmentBody,
@@ -325,6 +325,24 @@ router.patch("/shipments/:id/cancel-reject", requireAdmin, async (req, res): Pro
     .returning();
 
   res.json(formatShipment(shipment));
+});
+
+// GET /api/shipments/:id/stops — 複数地点取得
+router.get("/shipments/:id/stops", requireAuth, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+  const rows = await db.execute(sql`SELECT stops_json FROM shipments WHERE id = ${id}`);
+  const raw = (rows.rows?.[0] as any)?.stops_json ?? null;
+  res.json({ stops: raw ? JSON.parse(raw) : [] });
+});
+
+// PATCH /api/shipments/:id/stops — 複数地点保存
+router.patch("/shipments/:id/stops", requireAuth, requireAdmin, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+  const { stops } = req.body;
+  await db.execute(sql`UPDATE shipments SET stops_json = ${JSON.stringify(stops)}, updated_at = NOW() WHERE id = ${id}`);
+  res.json({ ok: true });
 });
 
 export default router;

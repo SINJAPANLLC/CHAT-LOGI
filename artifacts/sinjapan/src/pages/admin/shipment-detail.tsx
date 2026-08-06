@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Loader2, ArrowLeft, Save, Pencil, Bot, User, FileText, Send, X, MapPin, Navigation, Bell, AlertTriangle } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Pencil, Bot, User, FileText, Send, X, MapPin, Navigation, Bell, AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { customFetch } from '@workspace/api-client-react/custom-fetch';
 import { Link } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
@@ -66,10 +66,14 @@ export default function AdminShipmentDetail() {
   const updateShipment = useUpdateShipment();
   const updateStatus = useUpdateShipmentStatus();
 
+  type Stop = { type: 'pickup' | 'delivery'; address: string; datetime: string };
+
   const [editMode, setEditMode] = useState(false);
   const [editInfoMode, setEditInfoMode] = useState(false);
   const [editRevenueMode, setEditRevenueMode] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  const [extraStops, setExtraStops] = useState<Stop[]>([]);
+  const [editExtraStops, setEditExtraStops] = useState<Stop[]>([]);
   const [showInstruction, setShowInstruction] = useState(false);
   const [driverToken, setDriverToken] = useState<string | null>(null);
   const [generatingToken, setGeneratingToken] = useState(false);
@@ -91,6 +95,18 @@ export default function AdminShipmentDetail() {
     })
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d?.masterCardData) setMasterCardData(d.masterCardData); })
+      .catch(() => {});
+  }, [shipmentId]);
+
+  // 複数地点取得
+  React.useEffect(() => {
+    if (!shipmentId) return;
+    const token = localStorage.getItem('sinjapan_auth_token');
+    fetch(`/api/shipments/${shipmentId}/stops`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.stops) setExtraStops(d.stops); })
       .catch(() => {});
   }, [shipmentId]);
 
@@ -139,6 +155,16 @@ export default function AdminShipmentDetail() {
     }
   };
 
+  const saveStops = async (stops: Stop[]) => {
+    const token = localStorage.getItem('sinjapan_auth_token');
+    await fetch(`/api/shipments/${shipmentId}/stops`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ stops }),
+    });
+    setExtraStops(stops);
+  };
+
   const handleSave = async () => {
     try {
       const payload: any = {
@@ -164,8 +190,10 @@ export default function AdminShipmentDetail() {
         deliveryMethod: formData.deliveryMethod || undefined,
       };
       await updateShipment.mutateAsync({ id: shipmentId, data: payload });
+      if (editInfoMode) await saveStops(editExtraStops);
       queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
       setEditMode(false);
+      setEditInfoMode(false);
       toast({ title: '保存しました' });
     } catch {
       toast({ variant: 'destructive', title: '保存に失敗しました' });
@@ -297,7 +325,7 @@ export default function AdminShipmentDetail() {
                   </Button>
                 </div>
               ) : (
-                <Button variant="ghost" size="sm" onClick={() => setEditInfoMode(true)}>
+                <Button variant="ghost" size="sm" onClick={() => { setEditInfoMode(true); setEditExtraStops([...extraStops]); }}>
                   <Pencil className="h-3.5 w-3.5 mr-1.5" />編集
                 </Button>
               )
@@ -305,23 +333,63 @@ export default function AdminShipmentDetail() {
           >
             {editInfoMode ? (
               <div className="space-y-4 py-2">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5 col-span-2">
-                    <Label className="text-xs">集荷先住所</Label>
-                    <Input value={formData.pickupAddress} onChange={e => setFormData({...formData, pickupAddress: e.target.value})} placeholder="東京都〇〇区…" />
+                {/* 集荷先（メイン） */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">集荷先①</Label>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">集荷日時</Label>
-                    <Input value={formData.pickupDatetime} onChange={e => setFormData({...formData, pickupDatetime: e.target.value})} placeholder="2024-11-01 10:00" />
-                  </div>
-                  <div className="space-y-1.5 col-span-2">
-                    <Label className="text-xs">納品先住所</Label>
-                    <Input value={formData.deliveryAddress} onChange={e => setFormData({...formData, deliveryAddress: e.target.value})} placeholder="大阪府〇〇市…" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs">納品期限</Label>
-                    <Input value={formData.deliveryDeadline} onChange={e => setFormData({...formData, deliveryDeadline: e.target.value})} placeholder="2024-11-02 17:00" />
-                  </div>
+                  <Input value={formData.pickupAddress} onChange={e => setFormData({...formData, pickupAddress: e.target.value})} placeholder="東京都〇〇区…" />
+                  <Input value={formData.pickupDatetime} onChange={e => setFormData({...formData, pickupDatetime: e.target.value})} placeholder="集荷日時（例: 2024-11-01 10:00）" />
+                </div>
+                {/* 追加集荷先 */}
+                {editExtraStops.filter(s => s.type === 'pickup').map((s, i) => {
+                  const idx = editExtraStops.indexOf(s);
+                  return (
+                    <div key={i} className="space-y-2 border-l-2 border-blue-200 pl-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-blue-600">集荷先{i + 2}</Label>
+                        <button onClick={() => setEditExtraStops(editExtraStops.filter((_, j) => j !== idx))} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <Input value={s.address} onChange={e => setEditExtraStops(editExtraStops.map((es, j) => j === idx ? {...es, address: e.target.value} : es))} placeholder="追加集荷先住所" />
+                      <Input value={s.datetime} onChange={e => setEditExtraStops(editExtraStops.map((es, j) => j === idx ? {...es, datetime: e.target.value} : es))} placeholder="集荷日時" />
+                    </div>
+                  );
+                })}
+                <button onClick={() => setEditExtraStops([...editExtraStops, {type: 'pickup', address: '', datetime: ''}])}
+                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 font-medium">
+                  <Plus className="h-3.5 w-3.5" />集荷先を追加
+                </button>
+
+                {/* 納品先（メイン） */}
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <Label className="text-xs font-semibold">納品先①</Label>
+                  <Input value={formData.deliveryAddress} onChange={e => setFormData({...formData, deliveryAddress: e.target.value})} placeholder="大阪府〇〇市…" />
+                  <Input value={formData.deliveryDeadline} onChange={e => setFormData({...formData, deliveryDeadline: e.target.value})} placeholder="納品期限（例: 2024-11-02 17:00）" />
+                </div>
+                {/* 追加納品先 */}
+                {editExtraStops.filter(s => s.type === 'delivery').map((s, i) => {
+                  const idx = editExtraStops.indexOf(s);
+                  return (
+                    <div key={i} className="space-y-2 border-l-2 border-green-200 pl-3">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-green-600">納品先{i + 2}</Label>
+                        <button onClick={() => setEditExtraStops(editExtraStops.filter((_, j) => j !== idx))} className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                      <Input value={s.address} onChange={e => setEditExtraStops(editExtraStops.map((es, j) => j === idx ? {...es, address: e.target.value} : es))} placeholder="追加納品先住所" />
+                      <Input value={s.datetime} onChange={e => setEditExtraStops(editExtraStops.map((es, j) => j === idx ? {...es, datetime: e.target.value} : es))} placeholder="納品日時" />
+                    </div>
+                  );
+                })}
+                <button onClick={() => setEditExtraStops([...editExtraStops, {type: 'delivery', address: '', datetime: ''}])}
+                  className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-800 font-medium">
+                  <Plus className="h-3.5 w-3.5" />納品先を追加
+                </button>
+
+                <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border">
                   <div className="space-y-1.5">
                     <Label className="text-xs">荷物の種類</Label>
                     <Input value={formData.cargoType} onChange={e => setFormData({...formData, cargoType: e.target.value})} placeholder="パレット" />
@@ -350,20 +418,32 @@ export default function AdminShipmentDetail() {
               </div>
             ) : (
               <>
-                <Row label="集荷先" value={
-                  <span>
-                    {shipment.pickupAddress}
-                    <br />
+                {/* 集荷先（メイン） */}
+                <Row label="集荷先①" value={
+                  <span>{shipment.pickupAddress}<br />
                     <span className="text-xs text-muted-foreground font-normal">{shipment.pickupDatetime}</span>
                   </span>
                 } />
-                <Row label="納品先" value={
-                  <span>
-                    {shipment.deliveryAddress}
-                    <br />
+                {extraStops.filter(s => s.type === 'pickup').map((s, i) => (
+                  <Row key={i} label={`集荷先${i + 2}`} value={
+                    <span>{s.address}<br />
+                      <span className="text-xs text-muted-foreground font-normal">{s.datetime}</span>
+                    </span>
+                  } />
+                ))}
+                {/* 納品先（メイン） */}
+                <Row label="納品先①" value={
+                  <span>{shipment.deliveryAddress}<br />
                     <span className="text-xs text-muted-foreground font-normal">{shipment.deliveryDeadline}</span>
                   </span>
                 } />
+                {extraStops.filter(s => s.type === 'delivery').map((s, i) => (
+                  <Row key={i} label={`納品先${i + 2}`} value={
+                    <span>{s.address}<br />
+                      <span className="text-xs text-muted-foreground font-normal">{s.datetime}</span>
+                    </span>
+                  } />
+                ))}
                 <Row label="荷物" value={[shipment.cargoType, shipment.cargoQuantity].filter(Boolean).join(' / ')} />
                 <Row label="重量・サイズ" value={[shipment.cargoWeight, shipment.cargoSize].filter(Boolean).join(' / ')} />
                 <Row label="車両・配送方法" value={[shipment.vehicleType, shipment.deliveryMethod].filter(Boolean).join(' / ')} />
@@ -926,14 +1006,26 @@ export default function AdminShipmentDetail() {
                   <span className="font-medium">{shipment.carrier?.companyName || '未定'}</span>
                   <span className="text-muted-foreground">ドライバー</span>
                   <span className="font-medium">{shipment.assignedDriverName || '未定'}</span>
-                  <span className="text-muted-foreground">集荷先</span>
+                  <span className="text-muted-foreground">集荷先①</span>
                   <span className="font-medium">{shipment.pickupAddress || '—'}</span>
                   <span className="text-muted-foreground">集荷日時</span>
                   <span className="font-medium">{shipment.pickupDatetime || '—'}</span>
-                  <span className="text-muted-foreground">納品先</span>
+                  {extraStops.filter(s => s.type === 'pickup').map((s, i) => (
+                    <React.Fragment key={i}>
+                      <span className="text-muted-foreground">集荷先{i + 2}</span>
+                      <span className="font-medium">{s.address || '—'}{s.datetime ? `（${s.datetime}）` : ''}</span>
+                    </React.Fragment>
+                  ))}
+                  <span className="text-muted-foreground">納品先①</span>
                   <span className="font-medium">{shipment.deliveryAddress || '—'}</span>
                   <span className="text-muted-foreground">納品期限</span>
                   <span className="font-medium">{shipment.deliveryDeadline || '—'}</span>
+                  {extraStops.filter(s => s.type === 'delivery').map((s, i) => (
+                    <React.Fragment key={i}>
+                      <span className="text-muted-foreground">納品先{i + 2}</span>
+                      <span className="font-medium">{s.address || '—'}{s.datetime ? `（${s.datetime}）` : ''}</span>
+                    </React.Fragment>
+                  ))}
                   <span className="text-muted-foreground">荷物</span>
                   <span className="font-medium">{[shipment.cargoType, shipment.cargoQuantity].filter(Boolean).join(' / ') || '—'}</span>
                   <span className="text-muted-foreground">車両</span>
