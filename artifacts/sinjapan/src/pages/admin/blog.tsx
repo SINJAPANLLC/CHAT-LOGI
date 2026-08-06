@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Loader2, Plus, Trash2, Edit2, Eye, EyeOff, Sparkles,
-  FileText, Globe, X, Save, ExternalLink, Check
+  FileText, Globe, X, Save, ExternalLink, Check, Calendar, Play
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -265,6 +265,8 @@ function GenerateDialog({ onGenerated, onClose }: { onGenerated: (d: any) => voi
 }
 
 // ── メインページ ───────────────────────────────────────────────────────────────
+type AutoGenStatus = { enabled: boolean; lastRun: string | null; lastTitle: string | null; schedule: string };
+
 export default function AdminBlog() {
   const { toast } = useToast();
   const [posts, setPosts] = useState<Post[]>([]);
@@ -272,6 +274,9 @@ export default function AdminBlog() {
   const [editing, setEditing] = useState<Post | null | 'new'>(null);
   const [showGenerate, setShowGenerate] = useState(false);
   const [prefill, setPrefill] = useState<any>(null);
+  const [autoGen, setAutoGen] = useState<AutoGenStatus | null>(null);
+  const [autoGenLoading, setAutoGenLoading] = useState(false);
+  const [running, setRunning] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -279,7 +284,39 @@ export default function AdminBlog() {
     catch { toast({ title: '取得に失敗しました', variant: 'destructive' }); }
     finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, []);
+
+  const loadAutoGen = async () => {
+    try { setAutoGen(await apiFetch('/api/admin/blog/auto-gen')); }
+    catch { /* ignore */ }
+  };
+
+  useEffect(() => { load(); loadAutoGen(); }, []);
+
+  const handleToggleAutoGen = async () => {
+    if (!autoGen) return;
+    setAutoGenLoading(true);
+    try {
+      const updated = await apiFetch('/api/admin/blog/auto-gen', {
+        method: 'POST',
+        body: JSON.stringify({ enabled: !autoGen.enabled }),
+      });
+      setAutoGen(updated);
+      toast({ title: updated.enabled ? '自動生成を有効にしました' : '自動生成を無効にしました' });
+    } catch (e: any) { toast({ title: e.message, variant: 'destructive' }); }
+    finally { setAutoGenLoading(false); }
+  };
+
+  const handleRunNow = async () => {
+    if (!confirm('今すぐ1記事を生成して公開しますか？（1〜2分かかります）')) return;
+    setRunning(true);
+    try {
+      const r = await apiFetch('/api/admin/blog/auto-gen/run', { method: 'POST' });
+      toast({ title: `公開しました：${r.title}` });
+      load();
+      loadAutoGen();
+    } catch (e: any) { toast({ title: `生成失敗: ${e.message}`, variant: 'destructive' }); }
+    finally { setRunning(false); }
+  };
 
   const handleTogglePublish = async (post: Post) => {
     try {
@@ -330,6 +367,47 @@ export default function AdminBlog() {
           </div>
         ))}
       </div>
+
+      {/* 自動生成スケジューラー */}
+      {autoGen && (
+        <div className="rounded-xl border border-border bg-card p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className={`p-2 rounded-lg ${autoGen.enabled ? 'bg-green-100' : 'bg-muted'}`}>
+              <Calendar className={`h-5 w-5 ${autoGen.enabled ? 'text-green-600' : 'text-muted-foreground'}`} />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold">毎日自動生成</p>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${autoGen.enabled ? 'bg-green-100 text-green-700' : 'bg-muted text-muted-foreground'}`}>
+                  {autoGen.enabled ? '有効' : '無効'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">{autoGen.schedule} · 物流テーマを自動ローテーション</p>
+              {autoGen.lastRun && (
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                  最終生成: {new Date(autoGen.lastRun).toLocaleString('ja-JP')}
+                  {autoGen.lastTitle && ` — ${autoGen.lastTitle}`}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={handleRunNow} disabled={running} className="gap-1.5">
+              {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+              今すぐ生成
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleToggleAutoGen}
+              disabled={autoGenLoading}
+              className={autoGen.enabled ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-black text-white hover:bg-black/90'}
+            >
+              {autoGenLoading && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />}
+              {autoGen.enabled ? '停止する' : '有効にする'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* 記事一覧 */}
       {loading ? (

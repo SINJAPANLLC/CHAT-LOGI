@@ -19,6 +19,7 @@ import aiSettingsRouter from "./ai-settings";
 import marketingRouter from "./marketing";
 import blogRouter from "./blog";
 import contactsRouter from "./contacts";
+import seoRouter from "./seo";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(aiSettingsRouter);
 router.use(marketingRouter);
 router.use(blogRouter);
 router.use(contactsRouter);
+router.use(seoRouter);
 
 export default router;

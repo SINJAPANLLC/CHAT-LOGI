@@ -3,6 +3,7 @@ import { db, blogPostsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getStatus, setEnabled, generateAndPublish } from "../lib/blogAutoGen";
 
 const router: IRouter = Router();
 
@@ -143,6 +144,29 @@ router.post("/admin/blog/generate", requireAdmin, async (req, res): Promise<void
   }
 
   res.json(data);
+});
+
+// ── 自動生成スケジューラー設定 ──────────────────────────────────────────────────
+// GET /admin/blog/auto-gen — ステータス取得
+router.get("/admin/blog/auto-gen", requireAdmin, async (_req, res): Promise<void> => {
+  res.json(await getStatus());
+});
+
+// POST /admin/blog/auto-gen — 有効/無効切替
+router.post("/admin/blog/auto-gen", requireAdmin, async (req, res): Promise<void> => {
+  const { enabled } = req.body as { enabled: boolean };
+  await setEnabled(!!enabled);
+  res.json(await getStatus());
+});
+
+// POST /admin/blog/auto-gen/run — 手動で今すぐ1記事生成
+router.post("/admin/blog/auto-gen/run", requireAdmin, async (_req, res): Promise<void> => {
+  try {
+    const result = await generateAndPublish();
+    res.json({ ok: true, ...result });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 export default router;
