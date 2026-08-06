@@ -553,18 +553,6 @@ export default function AdminShipmentDetail() {
             );
           })()}
 
-          {/* 値引き承認通知ボタン */}
-          <button
-            onClick={() => {
-              setNotifyPrice(shipment.customerPrice ? String(Math.round(Number(shipment.customerPrice))) : '');
-              setNotifyMsg('');
-              setShowNotifyModal(true);
-            }}
-            className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-4 text-sm font-medium hover:bg-muted transition-colors"
-          >
-            <Bell className="h-4 w-4" />
-            値引き承認を顧客に通知
-          </button>
         </div>
 
         {/* 右カラム */}
@@ -572,21 +560,35 @@ export default function AdminShipmentDetail() {
 
           {/* お客様希望金額 */}
           {(shipment as any).desiredPrice && (
-            <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-              <div className="px-5 py-3 flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">お客様ご希望金額</span>
-                <div className="text-right">
-                  <span className="font-semibold text-sm">¥ {fmt((shipment as any).desiredPrice)}</span>
-                  {shipment.customerPrice && (
-                    <p className={`text-xs mt-0.5 ${Number((shipment as any).desiredPrice) >= Number(shipment.customerPrice) ? 'text-green-600' : 'text-amber-600'}`}>
-                      {Number((shipment as any).desiredPrice) >= Number(shipment.customerPrice)
-                        ? `見積もり内（差額 ¥${fmt(Number((shipment as any).desiredPrice) - Number(shipment.customerPrice))}）`
-                        : `見積もりより ¥${fmt(Number(shipment.customerPrice) - Number((shipment as any).desiredPrice))} 高い`}
-                    </p>
-                  )}
+            <>
+              <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+                <div className="px-5 py-3 flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">お客様ご希望金額</span>
+                  <div className="text-right">
+                    <span className="font-semibold text-sm">¥ {fmt((shipment as any).desiredPrice)}</span>
+                    {shipment.customerPrice && (
+                      <p className={`text-xs mt-0.5 ${Number((shipment as any).desiredPrice) >= Number(shipment.customerPrice) ? 'text-green-600' : 'text-amber-600'}`}>
+                        {Number((shipment as any).desiredPrice) >= Number(shipment.customerPrice)
+                          ? `見積もり内（差額 ¥${fmt(Number((shipment as any).desiredPrice) - Number(shipment.customerPrice))}）`
+                          : `見積もりより ¥${fmt(Number(shipment.customerPrice) - Number((shipment as any).desiredPrice))} 高い`}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
+              {/* 値引き承認通知ボタン */}
+              <button
+                onClick={() => {
+                  setNotifyPrice(shipment.customerPrice ? String(Math.round(Number(shipment.customerPrice))) : '');
+                  setNotifyMsg('');
+                  setShowNotifyModal(true);
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-4 text-sm font-medium hover:bg-muted transition-colors"
+              >
+                <Bell className="h-4 w-4" />
+                値引き承認を顧客に通知
+              </button>
+            </>
           )}
 
           {/* 収益サマリー */}
