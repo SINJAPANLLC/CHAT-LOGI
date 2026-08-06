@@ -317,17 +317,95 @@ function SendHistory() {
 
 // ── 自動通知設定 ───────────────────────────────────────────────────────────────
 const AUTO_RULES = [
-  { category: '会員',   status: '会員登録',         trigger: 'ユーザーが新規登録した時',                         mail: true  },
-  { category: '会員',   status: 'パスワードリセット', trigger: 'パスワードリセットをリクエストした時',             mail: true  },
-  { category: '案件',   status: '配車確定',          trigger: '管理者がステータスを「配車確定」に変更した時',      mail: true  },
-  { category: '案件',   status: '集荷完了',          trigger: '管理者がステータスを「集荷完了」に変更した時',      mail: true  },
-  { category: '案件',   status: '配送中',            trigger: '管理者がステータスを「配送中」に変更した時',        mail: true  },
-  { category: '案件',   status: '納品完了',          trigger: '管理者がステータスを「納品完了」に変更した時',      mail: true  },
-  { category: '案件',   status: '請求完了',          trigger: '管理者がステータスを「請求完了」に変更した時',      mail: true  },
-  { category: '案件',   status: 'キャンセル',        trigger: 'キャンセルが承認された時',                         mail: true  },
-  { category: 'お問合せ', status: '受付確認',        trigger: 'お問い合わせフォームが送信された時（ユーザーへ）',  mail: true  },
-  { category: 'お問合せ', status: '返信通知',        trigger: '管理者がお問い合わせに返信した時（ユーザーへ）',    mail: true  },
+  { category: '会員',     status: '会員登録',         trigger: 'ユーザーが新規登録した時',                         mail: true  },
+  { category: '会員',     status: 'パスワードリセット', trigger: 'パスワードリセットをリクエストした時',             mail: true  },
+  { category: '案件',     status: '配車確定',          trigger: '管理者がステータスを「配車確定」に変更した時',      mail: true  },
+  { category: '案件',     status: '集荷完了',          trigger: '管理者がステータスを「集荷完了」に変更した時',      mail: true  },
+  { category: '案件',     status: '配送中',            trigger: '管理者がステータスを「配送中」に変更した時',        mail: true  },
+  { category: '案件',     status: '納品完了',          trigger: '管理者がステータスを「納品完了」に変更した時',      mail: true  },
+  { category: '案件',     status: '請求完了',          trigger: '管理者がステータスを「請求完了」に変更した時',      mail: true  },
+  { category: '案件',     status: 'キャンセル',        trigger: 'キャンセルが承認された時',                         mail: true  },
+  { category: '決済',     status: '決済完了',          trigger: '管理者がカード決済をキャプチャした時',              mail: true  },
+  { category: 'お問合せ', status: '受付確認',          trigger: 'お問い合わせフォームが送信された時（ユーザーへ）',  mail: true  },
+  { category: 'お問合せ', status: '返信通知',          trigger: '管理者がお問い合わせに返信した時（ユーザーへ）',    mail: true  },
 ];
+
+// プレビューデータ
+const PREVIEW_DATA: Record<string, { badge?: string; name: string; subject: string; body: string; cta: string }> = {
+  '会員登録': {
+    name: '山田 太郎',
+    subject: '【Chat LOGI】ご登録ありがとうございます',
+    body: 'この度はChat LOGIにご登録いただきありがとうございます。\n\nチャットで運びたい荷物を教えていただくだけで、Chat LOGIがすべて手配いたします。\nいつでもお気軽にご利用ください。',
+    cta: 'Chat LOGIを使ってみる →',
+  },
+  'パスワードリセット': {
+    name: '山田 太郎',
+    subject: '【Chat LOGI】パスワードリセットのご案内',
+    body: 'パスワードリセットのリクエストを受け付けました。\n\n下のボタンからパスワードを再設定してください。\nリンクの有効期限は1時間です。\n\n心当たりのない場合はこのメールを無視してください。',
+    cta: 'パスワードを再設定する →',
+  },
+  '配車確定': {
+    badge: '配車確定',
+    name: '山田 太郎',
+    subject: '【Chat LOGI】配車が確定しました',
+    body: '担当ドライバーの手配が完了いたしました。\n\nルート：東京都渋谷区 → 大阪府大阪市北区\n\n集荷日時が近づきましたら担当者よりご連絡いたします。',
+    cta: '案件の詳細を確認する →',
+  },
+  '集荷完了': {
+    badge: '集荷完了',
+    name: '山田 太郎',
+    subject: '【Chat LOGI】集荷が完了しました',
+    body: '荷物の集荷が完了いたしました。\n\nルート：東京都渋谷区 → 大阪府大阪市北区\n\nこれより配送を開始いたします。',
+    cta: '配送状況を確認する →',
+  },
+  '配送中': {
+    badge: '配送中',
+    name: '山田 太郎',
+    subject: '【Chat LOGI】配送を開始しました',
+    body: '荷物の配送を開始いたしました。\n\nルート：東京都渋谷区 → 大阪府大阪市北区\n\n到着予定時刻については担当者よりご連絡いたします。',
+    cta: '配送状況を確認する →',
+  },
+  '納品完了': {
+    badge: '納品完了',
+    name: '山田 太郎',
+    subject: '【Chat LOGI】納品が完了しました',
+    body: '荷物が無事に納品完了いたしました。\n\nこのたびはChat LOGIをご利用いただきありがとうございました。',
+    cta: '案件の詳細を確認する →',
+  },
+  '請求完了': {
+    badge: '請求完了',
+    name: '山田 太郎',
+    subject: '【Chat LOGI】請求書を発行しました',
+    body: '請求書を発行いたしました。\n\nマイページよりご確認・ダウンロードいただけます。\nご不明な点がございましたらお気軽にお問い合わせください。',
+    cta: '請求書を確認する →',
+  },
+  'キャンセル': {
+    badge: 'キャンセル',
+    name: '山田 太郎',
+    subject: '【Chat LOGI】案件がキャンセルされました',
+    body: '案件のキャンセルが完了いたしました。\n\nご利用いただきありがとうございました。またのご依頼をお待ちしております。',
+    cta: 'マイページを確認する →',
+  },
+  '決済完了': {
+    badge: '決済完了',
+    name: '山田 太郎',
+    subject: '【Chat LOGI】決済が完了しました',
+    body: 'クレジットカードの決済が完了いたしました。\n\nご利用いただきありがとうございました。\n領収書・請求書はマイページよりご確認いただけます。',
+    cta: '領収書を確認する →',
+  },
+  '受付確認': {
+    name: '山田 太郎',
+    subject: '【Chat LOGI】お問い合わせを受け付けました',
+    body: 'お問い合わせいただきありがとうございます。\n\n内容を確認次第、担当者よりご連絡いたします。\n通常2営業日以内にご返信いたします。',
+    cta: 'マイページを確認する →',
+  },
+  '返信通知': {
+    name: '山田 太郎',
+    subject: '【Chat LOGI】お問い合わせへの回答',
+    body: 'お問い合わせへのご回答をお送りします。\n\n--- 担当者からの回答 ---\nご質問いただいた件につきまして、以下の通りご回答申し上げます。\n\n詳細はマイページよりご確認ください。',
+    cta: 'お問い合わせを確認する →',
+  },
+};
 
 function AutoSettings() {
   return (
@@ -372,40 +450,69 @@ function AutoSettings() {
         </table>
       </div>
 
-      {/* メールプレビュー（サンプル） */}
-      <div className="rounded-xl border border-border overflow-hidden shadow-sm">
-        <div className="px-5 py-3 border-b border-border bg-muted/20">
-          <p className="text-sm font-semibold">メールデザインプレビュー（配車確定の例）</p>
+      {/* メールプレビュー */}
+      <EmailPreview />
+    </div>
+  );
+}
+
+function EmailPreview() {
+  const keys = Object.keys(PREVIEW_DATA);
+  const [selected, setSelected] = React.useState(keys[0]);
+  const p = PREVIEW_DATA[selected];
+  const year = new Date().getFullYear();
+
+  return (
+    <div className="rounded-xl border border-border overflow-hidden shadow-sm">
+      <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center gap-3 flex-wrap">
+        <p className="text-sm font-semibold shrink-0">メールプレビュー</p>
+        <div className="flex flex-wrap gap-1.5">
+          {keys.map(k => (
+            <button
+              key={k}
+              onClick={() => setSelected(k)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                selected === k
+                  ? 'bg-foreground text-background'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {k}
+            </button>
+          ))}
         </div>
-        <div className="p-5">
-          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", maxWidth: 560 }}>
-            {/* ヘッダー */}
-            <div style={{ background: '#000', padding: '20px 28px', borderRadius: '10px 10px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      </div>
+      <div className="p-5 bg-muted/10">
+        <div style={{ fontFamily: "'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif", maxWidth: 560 }}>
+          {/* ヘッダー */}
+          <div style={{ background: '#000', padding: '20px 28px', borderRadius: '10px 10px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
               <span style={{ color: '#fff', fontWeight: 800, fontSize: 16, letterSpacing: 1 }}>Chat LOGI</span>
-              <span style={{ background: '#fff', color: '#000', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>配車確定</span>
+              <span style={{ color: '#888', fontSize: 12, marginLeft: 10 }}>チャットで頼める物流代行</span>
             </div>
-            {/* ボディ */}
-            <div style={{ background: '#fff', padding: '28px 28px 20px', border: '1px solid #e5e5e5', borderTop: 'none' }}>
-              <p style={{ margin: '0 0 16px', fontSize: 14, color: '#333', fontWeight: 500 }}>山田 太郎 様</p>
-              <p style={{ margin: '0 0 20px', fontSize: 14, color: '#333', lineHeight: 1.8 }}>
-                担当ドライバーの手配が完了いたしました。<br />
-                ルート：東京都渋谷区 → 大阪府大阪市北区<br /><br />
-                集荷日時が近づきましたら担当者よりご連絡いたします。
-              </p>
-              <div style={{ display: 'inline-block', background: '#000', borderRadius: 8, padding: '10px 24px', marginBottom: 20 }}>
-                <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>案件の詳細を確認する →</span>
-              </div>
-              <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '4px 0 16px' }} />
-              <p style={{ margin: 0, fontSize: 11, color: '#aaa', lineHeight: 1.7 }}>
-                このメールは Chat LOGI から自動送信されています。<br />
-                心当たりのない場合や、ご不明な点は担当者までお問い合わせください。
-              </p>
-            </div>
-            {/* フッター */}
-            <div style={{ background: '#f7f7f7', padding: '14px 28px', borderRadius: '0 0 10px 10px', border: '1px solid #e5e5e5', borderTop: 'none', display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 11, color: '#bbb' }}>© {new Date().getFullYear()} Chat LOGI</span>
-              <span style={{ fontSize: 11, color: '#bbb' }}>マイページ</span>
-            </div>
+            {p.badge && (
+              <span style={{ background: '#fff', color: '#000', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>{p.badge}</span>
+            )}
+          </div>
+          {/* ボディ */}
+          <div style={{ background: '#fff', padding: '32px 32px 24px', border: '1px solid #e5e5e5', borderTop: 'none' }}>
+            <p style={{ margin: '0 0 20px', fontSize: 15, color: '#333', fontWeight: 500 }}>{p.name} 様</p>
+            <div style={{ fontSize: 14, color: '#333', lineHeight: 1.9, marginBottom: 28, whiteSpace: 'pre-wrap' }}>{p.body}</div>
+            <table cellPadding={0} cellSpacing={0} style={{ marginBottom: 28 }}>
+              <tbody><tr><td style={{ background: '#000', borderRadius: 8 }}>
+                <span style={{ display: 'inline-block', padding: '12px 28px', color: '#fff', fontSize: 13, fontWeight: 700 }}>{p.cta}</span>
+              </td></tr></tbody>
+            </table>
+            <hr style={{ border: 'none', borderTop: '1px solid #ebebeb', margin: '0 0 20px' }} />
+            <p style={{ margin: 0, fontSize: 11, color: '#aaa', lineHeight: 1.7 }}>
+              このメールは <strong>Chat LOGI</strong> から自動送信されています。<br />
+              心当たりのない場合や、ご不明な点は担当者までお問い合わせください。
+            </p>
+          </div>
+          {/* フッター */}
+          <div style={{ background: '#f7f7f7', padding: '14px 28px', borderRadius: '0 0 10px 10px', border: '1px solid #e5e5e5', borderTop: 'none', display: 'flex', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, color: '#bbb' }}>© {year} Chat LOGI</span>
+            <span style={{ fontSize: 11, color: '#bbb' }}>合同会社SIN JAPAN</span>
           </div>
         </div>
       </div>

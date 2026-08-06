@@ -152,12 +152,37 @@ router.post("/square/capture/:squarePaymentId", requireAdmin, async (req, res): 
   }
 
   // 案件のsquareCapturedを更新
-  await db.update(shipmentsTable).set({
+  const [updated] = await db.update(shipmentsTable).set({
     squareCaptured: "true",
     paymentStatus: "決済完了",
     status: "請求完了",
     updatedAt: new Date(),
-  }).where(eq(shipmentsTable.squarePaymentId, squarePaymentId));
+  }).where(eq(shipmentsTable.squarePaymentId, squarePaymentId)).returning();
+
+  // 決済完了メール通知（非同期）
+  if (updated?.userId) {
+    const [user] = await db.select({ name: usersTable.name, email: usersTable.email })
+      .from(usersTable).where(eq(usersTable.id, updated.userId)).limit(1);
+    if (user) {
+      const subject = "【Chat LOGI】決済が完了しました";
+      const body = `クレジットカードの決済が完了いたしました。\n\nご利用いただきありがとうございました。\n領収書・請求書はマイページよりご確認いただけます。`;
+      await db.insert(notificationsTable).values({
+        userId: updated.userId,
+        shipmentId: updated.id,
+        title: subject,
+        message: body,
+        readStatus: false,
+      }).catch(() => {});
+      sendEmail(user.email, subject, buildEmailHtml({
+        subject,
+        recipientName: user.name ?? undefined,
+        body,
+        statusBadge: "決済完了",
+        shipmentId: updated.id,
+        ctaText: "領収書を確認する →",
+      })).catch(() => {});
+    }
+  }
 
   res.json({ status: data.payment?.status });
 });
