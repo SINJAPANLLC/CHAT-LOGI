@@ -78,7 +78,6 @@ export const shipmentsTable = pgTable("shipments", {
   cancelPreviousStatus: text("cancel_previous_status"),
   desiredPrice: numeric("desired_price", { precision: 12, scale: 2 }),
   notes: text("notes"),
-  masterCardData: text("master_card_data"), // JSON: 運送会社が送信したマスターカード情報
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

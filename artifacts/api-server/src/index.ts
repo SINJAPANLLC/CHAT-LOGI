@@ -3,6 +3,17 @@ import { logger } from "./lib/logger";
 import { seedRequiredAccounts } from "./lib/seed";
 import { startScheduler } from "./lib/blogAutoGen";
 import { startAutoProspect } from "./lib/autoProspect";
+import { db } from "@workspace/db";
+import { sql } from "drizzle-orm";
+
+async function runMigrations() {
+  try {
+    await db.execute(sql`ALTER TABLE shipments ADD COLUMN IF NOT EXISTS master_card_data TEXT`);
+    logger.info("migration: master_card_data column ready");
+  } catch (e: any) {
+    logger.warn({ err: e.message }, "migration warning (non-fatal)");
+  }
+}
 
 const port = Number(process.env.PORT ?? 8080);
 
@@ -17,6 +28,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+  runMigrations();
   seedRequiredAccounts();
   startScheduler();
   startAutoProspect();

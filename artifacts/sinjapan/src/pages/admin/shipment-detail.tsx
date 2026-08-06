@@ -80,6 +80,19 @@ export default function AdminShipmentDetail() {
   const [showMasterCard, setShowMasterCard] = useState(false);
   const [masterCardToken, setMasterCardToken] = useState<string | null>(null);
   const [generatingMasterToken, setGeneratingMasterToken] = useState(false);
+  const [masterCardData, setMasterCardData] = useState<Record<string, string> | null>(null);
+
+  // マスターカード提出データ取得
+  React.useEffect(() => {
+    if (!shipmentId) return;
+    const token = localStorage.getItem('sinjapan_auth_token');
+    fetch(`/api/shipments/${shipmentId}/master-card-data`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.masterCardData) setMasterCardData(d.masterCardData); })
+      .catch(() => {});
+  }, [shipmentId]);
 
   React.useEffect(() => {
     if (shipment) {
@@ -483,10 +496,8 @@ export default function AdminShipmentDetail() {
 
           {/* 送信済みマスターカード表示 */}
           {(() => {
-            const raw = (shipment as any).masterCardData;
-            if (!raw) return null;
-            let mc: Record<string, string> = {};
-            try { mc = JSON.parse(raw); } catch { return null; }
+            const mc = masterCardData;
+            if (!mc) return null;
             const LABELS: [string, string][] = [
               ['companyName', '会社名'],
               ['companyKana', '会社名（フリガナ）'],

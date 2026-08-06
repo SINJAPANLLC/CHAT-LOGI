@@ -3,7 +3,7 @@
  */
 import { Router, type IRouter } from "express";
 import { db, shipmentsTable, carriersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { sendEmail, buildEmailHtml, ADMIN_NOTIFY_EMAIL } from "../lib/email";
 
@@ -136,10 +136,23 @@ router.get("/master-card/:token", async (req, res): Promise<void> => {
   const carrier = (shipment as any).assignedCarrierId
     ? (await db.select().from(carriersTable).where(eq(carriersTable.id, (shipment as any).assignedCarrierId)).limit(1))[0]
     : null;
+  // master_card_data を raw SQL で取得
+  const rows = await db.execute(sql`SELECT master_card_data FROM shipments WHERE id = ${shipment.id}`);
+  const mcRaw = (rows.rows?.[0] as any)?.master_card_data ?? null;
   res.json({
     shipmentId: shipment.id,
     carrierName: carrier?.companyName ?? (shipment as any).driverCarrierName ?? null,
+    masterCardData: mcRaw ? JSON.parse(mcRaw) : null,
   });
+});
+
+// GET /api/shipments/:id/master-card-data — 管理画面用：提出済みマスターカード取得
+router.get("/shipments/:id/master-card-data", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+  const rows = await db.execute(sql`SELECT master_card_data FROM shipments WHERE id = ${id}`);
+  const mcRaw = (rows.rows?.[0] as any)?.master_card_data ?? null;
+  res.json({ masterCardData: mcRaw ? JSON.parse(mcRaw) : null });
 });
 
 // POST /api/master-card/:token/submit — フォーム送信
@@ -149,10 +162,10 @@ router.post("/master-card/:token/submit", async (req, res): Promise<void> => {
 
   const d = req.body as Record<string, string>;
 
-  // DBに保存
-  await db.update(shipmentsTable)
-    .set({ masterCardData: JSON.stringify({ ...d, submittedAt: new Date().toISOString() }) } as any)
-    .where(eq(shipmentsTable.id, shipment.id));
+  // DBに保存（raw SQL — スキーマ外カラム）
+  await db.execute(
+    sql`UPDATE shipments SET master_card_data = ${JSON.stringify({ ...d, submittedAt: new Date().toISOString() })} WHERE id = ${shipment.id}`
+  );
 
   // 管理者へメール通知
   const rows = [
