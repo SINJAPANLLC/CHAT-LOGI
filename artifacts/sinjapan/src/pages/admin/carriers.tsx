@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useListCarriers, useCreateCarrier, useUpdateCarrier } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Plus, Pencil } from 'lucide-react';
+import { Loader2, Plus, Pencil, Search, X } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -87,6 +87,17 @@ export default function AdminCarriers() {
   const [editCarrier, setEditCarrier] = useState<any | null>(null);
   const [addForm, setAddForm] = useState<FormData>({ ...EMPTY });
   const [editForm, setEditForm] = useState<FormData>({ ...EMPTY });
+  const [searchName, setSearchName] = useState('');
+  const [searchArea, setSearchArea] = useState('');
+
+  const filtered = useMemo(() => {
+    if (!carriers) return [];
+    return carriers.filter((c: any) => {
+      const nameOk = !searchName || c.companyName?.includes(searchName);
+      const areaOk = !searchArea || c.serviceAreas?.includes(searchArea);
+      return nameOk && areaOk;
+    });
+  }, [carriers, searchName, searchArea]);
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['/api/carriers'] });
 
@@ -173,6 +184,41 @@ export default function AdminCarriers() {
         </DialogContent>
       </Dialog>
 
+      {/* 検索バー */}
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchName}
+            onChange={e => setSearchName(e.target.value)}
+            placeholder="会社名で検索"
+            className="pl-9 pr-8"
+          />
+          {searchName && (
+            <button onClick={() => setSearchName('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="relative flex-1 min-w-[180px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={searchArea}
+            onChange={e => setSearchArea(e.target.value)}
+            placeholder="エリアで検索（例：関東、大阪）"
+            className="pl-9 pr-8"
+          />
+          {searchArea && (
+            <button onClick={() => setSearchArea('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        {(searchName || searchArea) && (
+          <p className="text-sm text-muted-foreground self-center">{filtered.length} 件</p>
+        )}
+      </div>
+
       <div className="rounded-xl border border-border shadow-sm overflow-x-auto">
         <table className="w-full text-sm min-w-[900px]">
           <thead>
@@ -189,13 +235,13 @@ export default function AdminCarriers() {
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
                 </td>
               </tr>
-            ) : !carriers?.length ? (
+            ) : !filtered.length ? (
               <tr>
                 <td colSpan={HEADERS.length} className="py-16 text-center text-muted-foreground">
-                  運送会社が登録されていません
+                  {carriers?.length ? '条件に一致する運送会社がありません' : '運送会社が登録されていません'}
                 </td>
               </tr>
-            ) : carriers.map((c: any) => (
+            ) : filtered.map((c: any) => (
               <tr key={c.id} className="hover:bg-muted/20 transition-colors">
                 <td className="px-4 py-3.5 font-semibold whitespace-nowrap">{c.companyName}</td>
                 <td className="px-4 py-3.5 text-muted-foreground whitespace-nowrap">{c.contactName || '—'}</td>
