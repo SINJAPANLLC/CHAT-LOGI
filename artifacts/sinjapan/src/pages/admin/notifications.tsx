@@ -317,12 +317,16 @@ function SendHistory() {
 
 // ── 自動通知設定 ───────────────────────────────────────────────────────────────
 const AUTO_RULES = [
-  { status: '配車確定',   trigger: '管理者がステータスを「配車確定」に変更した時',   mail: true  },
-  { status: '集荷完了',   trigger: '管理者がステータスを「集荷完了」に変更した時',   mail: true  },
-  { status: '配送中',     trigger: '管理者がステータスを「配送中」に変更した時',     mail: true  },
-  { status: '納品完了',   trigger: '管理者がステータスを「納品完了」に変更した時',   mail: true  },
-  { status: '請求完了',   trigger: '管理者がステータスを「請求完了」に変更した時',   mail: true  },
-  { status: 'キャンセル', trigger: 'キャンセルが承認された時',                        mail: true  },
+  { category: '会員',   status: '会員登録',         trigger: 'ユーザーが新規登録した時',                         mail: true  },
+  { category: '会員',   status: 'パスワードリセット', trigger: 'パスワードリセットをリクエストした時',             mail: true  },
+  { category: '案件',   status: '配車確定',          trigger: '管理者がステータスを「配車確定」に変更した時',      mail: true  },
+  { category: '案件',   status: '集荷完了',          trigger: '管理者がステータスを「集荷完了」に変更した時',      mail: true  },
+  { category: '案件',   status: '配送中',            trigger: '管理者がステータスを「配送中」に変更した時',        mail: true  },
+  { category: '案件',   status: '納品完了',          trigger: '管理者がステータスを「納品完了」に変更した時',      mail: true  },
+  { category: '案件',   status: '請求完了',          trigger: '管理者がステータスを「請求完了」に変更した時',      mail: true  },
+  { category: '案件',   status: 'キャンセル',        trigger: 'キャンセルが承認された時',                         mail: true  },
+  { category: 'お問合せ', status: '受付確認',        trigger: 'お問い合わせフォームが送信された時（ユーザーへ）',  mail: true  },
+  { category: 'お問合せ', status: '返信通知',        trigger: '管理者がお問い合わせに返信した時（ユーザーへ）',    mail: true  },
 ];
 
 function AutoSettings() {
@@ -339,7 +343,8 @@ function AutoSettings() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-muted/40 border-b border-border">
-              <th className="px-5 py-3 text-left font-medium text-muted-foreground">ステータス</th>
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">カテゴリ</th>
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">種別</th>
               <th className="px-5 py-3 text-left font-medium text-muted-foreground">トリガー条件</th>
               <th className="px-5 py-3 text-center font-medium text-muted-foreground">メール</th>
               <th className="px-5 py-3 text-center font-medium text-muted-foreground">システム内通知</th>
@@ -347,8 +352,9 @@ function AutoSettings() {
           </thead>
           <tbody className="divide-y divide-border bg-card">
             {AUTO_RULES.map(r => (
-              <tr key={r.status} className="hover:bg-muted/20 transition-colors">
-                <td className="px-5 py-3.5">
+              <tr key={r.category + r.status} className="hover:bg-muted/20 transition-colors">
+                <td className="px-5 py-3.5 text-xs text-muted-foreground whitespace-nowrap">{r.category}</td>
+                <td className="px-5 py-3.5 whitespace-nowrap">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-foreground text-background text-xs font-semibold">
                     {r.status}
                   </span>

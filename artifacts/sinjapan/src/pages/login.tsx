@@ -102,11 +102,18 @@ export default function Login() {
           </Form>
         </div>
 
-        <div className="text-center text-sm text-muted-foreground">
-          アカウントをお持ちでないですか？{' '}
-          <Link href="/register" className="font-medium text-primary hover:underline">
-            新規登録
-          </Link>
+        <div className="text-center text-sm text-muted-foreground space-y-1">
+          <div>
+            <Link href="/forgot-password" className="font-medium text-primary hover:underline">
+              パスワードをお忘れの方
+            </Link>
+          </div>
+          <div>
+            アカウントをお持ちでないですか？{' '}
+            <Link href="/register" className="font-medium text-primary hover:underline">
+              新規登録
+            </Link>
+          </div>
         </div>
       </div>
     </div>
