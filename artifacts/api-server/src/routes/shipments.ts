@@ -13,6 +13,7 @@ import {
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { authorizeOnFile } from "../lib/square-authorize";
 import { sendAutoNotification } from "../lib/autoNotify";
+import { sendEmail, buildEmailHtml, ADMIN_NOTIFY_EMAIL } from "../lib/email";
 import { calcPriceWithConfig, parsePricingConfig, DEFAULT_CONFIG } from "../lib/pricing";
 import { settingsTable } from "@workspace/db";
 import { like } from "drizzle-orm";
@@ -116,6 +117,25 @@ router.post("/shipments", requireAuth, async (req, res): Promise<void> => {
     .insert(shipmentsTable)
     .values({ ...parsed.data, userId: req.session.userId, status: "受付中" })
     .returning();
+
+  // 管理者への新規配送依頼通知（非同期）
+  const [user] = await db.select({ name: usersTable.name, email: usersTable.email })
+    .from(usersTable).where(eq(usersTable.id, req.session.userId!)).limit(1);
+  const adminSubject = `【Chat LOGI】新規配送依頼 #${shipment.id}`;
+  const adminBody = [
+    `新しい配送依頼が届きました。`,
+    ``,
+    `依頼者：${user?.name ?? "不明"}（${user?.email ?? ""}）`,
+    `案件ID：#${shipment.id}`,
+    `集荷先：${shipment.pickupAddress ?? "未設定"}`,
+    `納品先：${shipment.deliveryAddress ?? "未設定"}`,
+    `車格：${shipment.vehicleSize ?? "未設定"}`,
+  ].join("\n");
+  sendEmail(
+    ADMIN_NOTIFY_EMAIL,
+    adminSubject,
+    buildEmailHtml({ subject: adminSubject, body: adminBody, ctaText: "管理画面で確認する →" }),
+  ).catch(() => {});
 
   res.status(201).json(formatShipment(shipment));
 });

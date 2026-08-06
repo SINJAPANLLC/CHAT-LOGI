@@ -3,7 +3,7 @@
  */
 import { db, notificationsTable, usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { sendEmail, buildEmailHtml } from "./email";
+import { sendEmail, buildEmailHtml, ADMIN_NOTIFY_EMAIL } from "./email";
 
 interface AutoNotifyPayload {
   shipmentId: number;
@@ -85,7 +85,7 @@ export async function sendAutoNotification(payload: AutoNotifyPayload): Promise<
     shipmentId,
     ctaText: rule.cta,
   });
-  sendEmail(user.email, subject, html).catch((e) =>
+  sendEmail(user.email, subject, html, { bcc: ADMIN_NOTIFY_EMAIL }).catch((e) =>
     console.error("[AUTO NOTIFY EMAIL ERROR]", e)
   );
 }

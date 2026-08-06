@@ -15,14 +15,21 @@ function createTransport() {
   };
 }
 
-export async function sendEmail(to: string, subject: string, html: string): Promise<{ sent: boolean; reason?: string }> {
+export const ADMIN_NOTIFY_EMAIL = process.env.ADMIN_NOTIFY_EMAIL ?? "info@sinjapan.jp";
+
+export async function sendEmail(
+  to: string,
+  subject: string,
+  html: string,
+  opts?: { bcc?: string },
+): Promise<{ sent: boolean; reason?: string }> {
   const cfg = createTransport();
   if (!cfg) {
-    console.log(`[EMAIL MOCK] To: ${to}\nSubject: ${subject}\n---\n${html}\n---`);
+    console.log(`[EMAIL MOCK] To: ${to}${opts?.bcc ? ` BCC: ${opts.bcc}` : ""}\nSubject: ${subject}\n---\n${html}\n---`);
     return { sent: false, reason: "SMTP未設定（ログ出力のみ）" };
   }
   try {
-    await cfg.transport.sendMail({ from: cfg.from, to, subject, html });
+    await cfg.transport.sendMail({ from: cfg.from, to, subject, html, bcc: opts?.bcc });
     return { sent: true };
   } catch (e: any) {
     console.error("[EMAIL ERROR]", e.message);

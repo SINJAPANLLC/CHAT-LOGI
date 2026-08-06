@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import { db, contactsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
-import { sendEmail, buildEmailHtml } from "../lib/email";
+import { sendEmail, buildEmailHtml, ADMIN_NOTIFY_EMAIL } from "../lib/email";
 
 const router: IRouter = Router();
 
@@ -28,17 +28,16 @@ router.post("/contact", async (req, res): Promise<void> => {
     .returning();
 
   // 管理者への通知メール（非同期・失敗しても送信完了扱い）
-  const adminEmail = process.env.ADMIN_EMAIL ?? process.env.SMTP_USER;
-  if (adminEmail) {
+  {
     const html = buildEmailHtml({
       subject: `【Chat LOGI】新規お問い合わせ：${subject}`,
       body: `新しいお問い合わせが届きました。\n\n氏名：${name}\nメール：${email}\n件名：${subject}\n\n内容：\n${message}`,
       ctaText: "管理画面で確認する →",
     });
     sendEmail(
-      adminEmail,
+      ADMIN_NOTIFY_EMAIL,
       `【Chat LOGI】新規お問い合わせ：${subject}`,
-      html
+      html,
     ).catch(() => {});
   }
 
