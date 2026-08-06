@@ -32,7 +32,7 @@ function buildPreviewHtml(subject: string, bodyText: string, ctaText: string) {
 </td></tr>
 <tr><td style="background:#111;padding:28px 32px 20px">
   <p style="margin:0;font-size:20px;font-weight:800;color:#fff;line-height:1.4">${headline}</p>
-  <p style="margin:10px 0 0;font-size:12px;color:#888">物流代行サービス Chat LOGI よりご連絡いたします</p>
+  <p style="margin:10px 0 0;font-size:12px;color:#888">Chat LOGI よりご連絡いたします</p>
 </td></tr>
 <tr><td style="background:#fff;padding:28px 32px 20px">
   <p style="margin:0 0 16px;font-size:13px;color:#333;font-weight:500">○○株式会社 ご担当者様</p>
@@ -66,7 +66,7 @@ const TEMPLATES = [
   {
     label: '新規ご挨拶',
     subject: '【Chat LOGI】はじめまして',
-    body: '{会社名} {担当者名}\n\nはじめまして。物流代行サービス「Chat LOGI」と申します。\n\nChat LOGIはチャットで依頼するだけで、配車・手配をすべて代行するサービスです。\n貴社の物流業務をよりシンプルにできると考え、ご連絡いたしました。\n\nぜひ一度、詳細をご説明する機会をいただけますと幸いです。\n\nよろしくお願いいたします。',
+    body: '{会社名} {担当者名}\n\nはじめまして。「Chat LOGI」と申します。\n\nChat LOGIはチャットで依頼するだけで、配車・手配をすべて代行するサービスです。\n貴社の物流業務をよりシンプルにできると考え、ご連絡いたしました。\n\nぜひ一度、詳細をご説明する機会をいただけますと幸いです。\n\nよろしくお願いいたします。',
   },
   {
     label: 'サービス案内',
