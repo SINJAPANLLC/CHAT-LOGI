@@ -43,6 +43,7 @@ export default function Payment() {
   const [error, setError] = useState<string | null>(null);
   const [corporate, setCorporate] = useState<any>(null);
   const [loadingCorporate, setLoadingCorporate] = useState(true);
+  const [paid, setPaid] = useState(false);
   const cardRef = useRef<any>(null);
   const cardContainerRef = useRef<HTMLDivElement>(null);
 
@@ -137,8 +138,6 @@ export default function Payment() {
 
   const isApprovedCorporate = corporate?.creditStatus === 'approved';
   const canUseInvoice = isApprovedCorporate && (corporate?.creditAvailable ?? 0) >= total;
-
-  const [paid, setPaid] = useState(false);
 
   const handleCardPay = async () => {
     if (!cardRef.current) return;
