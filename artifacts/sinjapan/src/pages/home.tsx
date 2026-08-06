@@ -127,7 +127,7 @@ export default function Home() {
     <div className="flex-1 flex flex-col items-center justify-center px-4 pb-8 max-w-3xl mx-auto w-full">
 
       {/* Greeting */}
-      <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-16 tracking-tight">
+      <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-foreground mb-16 tracking-tight text-balance">
         チャットするだけ。荷物が運べる。
       </h1>
 
