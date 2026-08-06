@@ -127,16 +127,16 @@ router.post("/square/authorize", requireAuth, async (req, res): Promise<void> =>
 
   const paymentId = data.payment?.id;
 
-  // squarePaymentIdを案件に保存
+  // 1円オーソリは即void（仮押さえを即解放）
+  await squareFetch(`/v2/payments/${paymentId}/cancel`, "POST", {});
+
+  // カード確認完了をDBに記録（voidしたのでpaymentIdは保存しない）
   await db.update(shipmentsTable).set({
-    squarePaymentId: paymentId,
-    squareCaptured: "false",
     paymentMethod: "card",
-    paymentStatus: "決済処理中",
     updatedAt: new Date(),
   }).where(eq(shipmentsTable.id, Number(shipmentId)));
 
-  res.json({ paymentId, status: data.payment?.status });
+  res.json({ status: "card_verified" });
 });
 
 // POST /square/capture/:paymentId — 納品完了後に管理者がキャプチャ
