@@ -88,12 +88,10 @@ router.post("/square/authorize", requireAuth, async (req, res): Promise<void> =>
   const [shipment] = await db.select().from(shipmentsTable).where(eq(shipmentsTable.id, Number(shipmentId))).limit(1);
   if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
 
-  const amountYen = Math.round(Number(shipment.customerPrice) * 1.1); // 税込
-
   const squareRes = await squareFetch("/v2/payments", "POST", {
     source_id: sourceId,
     idempotency_key: randomUUID(),
-    amount_money: { amount: amountYen, currency: "JPY" },
+    amount_money: { amount: 1, currency: "JPY" }, // カード確認用1円オーソリ
     location_id: process.env.SQUARE_LOCATION_ID,
     autocomplete: false, // オーソリのみ（キャプチャは納品後）
     note: `Chat LOGI 案件 #${shipment.id}`,
