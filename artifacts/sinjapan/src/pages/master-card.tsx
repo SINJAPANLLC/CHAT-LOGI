@@ -174,9 +174,7 @@ export default function MasterCardPage() {
         <div className="bg-white border border-gray-300 rounded-lg print:rounded-none print:border-0 overflow-hidden mb-0">
           <div className="bg-black text-white px-6 py-4 flex items-start justify-between">
             <div>
-              <p className="text-xs opacity-70 mb-1">この度はお取引き頂きまして有難うございます。</p>
-              <p className="text-xs opacity-70">顧客情報登録の為、FAX、またはアドレスまでお送りください。</p>
-              <p className="text-xs opacity-70">登録フォームにご記入・入力後ご返信ください。</p>
+              <p className="text-xs opacity-70">顧客情報登録の為、登録フォームにご入力後送信ください。</p>
             </div>
             <div className="text-right text-xs opacity-80 shrink-0 ml-4">
               <p className="font-bold text-base text-white mb-1">合同会社 SIN JAPAN</p>
