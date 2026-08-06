@@ -130,9 +130,11 @@ router.post("/square/authorize", requireAuth, async (req, res): Promise<void> =>
   // 1円オーソリは即void（仮押さえを即解放）
   await squareFetch(`/v2/payments/${paymentId}/cancel`, "POST", {});
 
-  // カード確認完了をDBに記録（voidしたのでpaymentIdは保存しない）
+  // カード確認完了 → 決済完了扱いにしてステータスを進める
   await db.update(shipmentsTable).set({
     paymentMethod: "card",
+    paymentStatus: "決済完了",
+    status: "請求完了",
     updatedAt: new Date(),
   }).where(eq(shipmentsTable.id, Number(shipmentId)));
 

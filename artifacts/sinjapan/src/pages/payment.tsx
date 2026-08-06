@@ -111,6 +111,25 @@ export default function Payment() {
     return <div className="flex-1 flex items-center justify-center text-muted-foreground">案件が見つかりません</div>;
   }
 
+  // 決済完了画面
+  if (paid) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center px-4 text-center">
+        <div className="w-16 h-16 rounded-full bg-foreground flex items-center justify-center mb-6">
+          <CheckCircle className="h-8 w-8 text-background" />
+        </div>
+        <h1 className="text-2xl font-bold mb-2">決済が完了しました</h1>
+        <p className="text-muted-foreground mb-8">ご利用いただきありがとうございました。</p>
+        <button
+          onClick={() => setLocation(`/shipment/${shipmentId}`)}
+          className="px-6 py-3 rounded-full bg-foreground text-background font-medium hover:opacity-90 transition-opacity"
+        >
+          配送状況を確認する
+        </button>
+      </div>
+    );
+  }
+
   const basePrice = Number(shipment.customerPrice) || 0;
   const tax = Math.round(basePrice * 0.1);
   const total = basePrice + tax;
@@ -119,6 +138,8 @@ export default function Payment() {
   const isApprovedCorporate = corporate?.creditStatus === 'approved';
   const canUseInvoice = isApprovedCorporate && (corporate?.creditAvailable ?? 0) >= total;
 
+  const [paid, setPaid] = useState(false);
+
   const handleCardPay = async () => {
     if (!cardRef.current) return;
     setSubmitting(true); setError(null);
@@ -126,7 +147,7 @@ export default function Payment() {
       const result = await cardRef.current.tokenize();
       if (result.status !== 'OK') throw new Error(result.errors?.[0]?.message ?? 'カードのトークン化に失敗しました');
       await squareAuthorize(shipmentId, result.token);
-      setLocation(`/shipment/${shipmentId}`);
+      setPaid(true);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -138,7 +159,7 @@ export default function Payment() {
     setSubmitting(true); setError(null);
     try {
       await invoiceCheckout(shipmentId);
-      setLocation(`/shipment/${shipmentId}`);
+      setPaid(true);
     } catch (e: any) {
       setError(e.message);
     } finally {
