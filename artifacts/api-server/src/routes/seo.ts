@@ -1,9 +1,64 @@
 import { Router, type IRouter } from "express";
 import { db, settingsTable } from "@workspace/db";
-import { like } from "drizzle-orm";
+import { blogPostsTable } from "@workspace/db";
+import { like, eq } from "drizzle-orm";
 import { requireAdmin } from "../middlewares/auth";
 
 const router: IRouter = Router();
+
+// ── サイトマップ（公開・認証不要） ────────────────────────────────────────────
+router.get("/sitemap.xml", async (_req, res): Promise<void> => {
+  // DBからサイトURLを取得（設定されていなければ環境変数 or デフォルト）
+  const siteUrlRow = await db.select().from(settingsTable)
+    .where(eq(settingsTable.key, "seo_siteUrl")).limit(1).catch(() => []);
+  const baseUrl = (siteUrlRow[0]?.value ?? process.env.SITE_URL ?? "https://chatlogi.jp").replace(/\/$/, "");
+
+  // 静的ページ
+  const staticPages = [
+    { path: "/",        priority: "1.0", changefreq: "weekly"  },
+    { path: "/blog",    priority: "0.8", changefreq: "daily"   },
+    { path: "/login",   priority: "0.3", changefreq: "monthly" },
+    { path: "/register",priority: "0.3", changefreq: "monthly" },
+  ];
+
+  // ブログ記事（公開済みのみ）
+  const posts = await db.select({
+    slug:      blogPostsTable.slug,
+    updatedAt: blogPostsTable.updatedAt,
+  }).from(blogPostsTable)
+    .where(eq(blogPostsTable.published, true))
+    .catch(() => []);
+
+  const today = new Date().toISOString().split("T")[0];
+
+  const urls = [
+    ...staticPages.map(p => `
+  <url>
+    <loc>${baseUrl}${p.path}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${p.changefreq}</changefreq>
+    <priority>${p.priority}</priority>
+  </url>`),
+    ...posts.map(p => `
+  <url>
+    <loc>${baseUrl}/blog/${p.slug}</loc>
+    <lastmod>${p.updatedAt instanceof Date ? p.updatedAt.toISOString().split("T")[0] : today}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>`),
+  ].join("");
+
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
+</urlset>`;
+
+  res.set("Content-Type", "application/xml; charset=utf-8");
+  res.set("Cache-Control", "public, max-age=3600");
+  res.send(xml);
+});
+
+// ── 管理者向け SEO設定 ────────────────────────────────────────────────────────
 
 // GET /admin/seo — 全SEO設定を取得
 router.get("/admin/seo", requireAdmin, async (_req, res): Promise<void> => {
