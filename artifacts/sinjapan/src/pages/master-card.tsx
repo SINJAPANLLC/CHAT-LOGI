@@ -341,9 +341,90 @@ export default function MasterCardPage() {
 
       <style>{`
         @media print {
-          @page { margin: 15mm; size: A4; }
-          body { font-size: 11px; }
-          button, .print\\:hidden { display: none !important; }
+          @page { size: A4 portrait; margin: 6mm; }
+
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+          html, body { margin: 0; padding: 0; background: #fff !important; }
+
+          .print\\:hidden, button { display: none !important; }
+
+          /* コンテナをA4幅に収める */
+          .max-w-3xl {
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          /* カード全体 */
+          .bg-white.border.border-gray-300 {
+            border: none !important;
+            border-radius: 0 !important;
+          }
+
+          /* ヘッダー */
+          .bg-black.text-white {
+            padding: 4px 8px !important;
+          }
+          .bg-black.text-white p {
+            font-size: 8px !important;
+            margin: 0 !important;
+          }
+          .bg-black.text-white .font-bold {
+            font-size: 10px !important;
+          }
+
+          /* NOバー */
+          .px-6.py-3.border-b {
+            padding: 3px 8px !important;
+          }
+          .text-lg.font-bold {
+            font-size: 12px !important;
+          }
+
+          /* セクションラベル */
+          .px-6.py-4 > p,
+          .px-6.pb-6 > p {
+            font-size: 7px !important;
+            margin-bottom: 2px !important;
+          }
+
+          /* テーブル共通 */
+          table { border-collapse: collapse !important; width: 100% !important; }
+          td { font-size: 8px !important; line-height: 1.2 !important; }
+
+          /* セクションパディング */
+          .px-6.py-4 { padding: 2px 6px !important; }
+          .px-6.pb-6 { padding: 2px 6px 4px !important; }
+
+          /* 行の高さ */
+          tr td { padding: 1.5px 4px !important; }
+          td.bg-gray-100 {
+            background: #f3f4f6 !important;
+            width: 80px !important;
+            font-size: 7.5px !important;
+            white-space: nowrap;
+          }
+
+          /* 入力フィールド */
+          input, select, textarea {
+            font-size: 8px !important;
+            padding: 0 2px !important;
+            border: none !important;
+            border-bottom: 0.5px solid #999 !important;
+            background: transparent !important;
+            height: auto !important;
+            line-height: 1.3 !important;
+          }
+          textarea { rows: 2; height: 24px !important; resize: none; overflow: hidden; }
+
+          /* 内部flexの調整 */
+          td > div { gap: 4px !important; }
+          td span.text-gray-400, td span.text-gray-500 { font-size: 7px !important; }
+
+          /* ページ分割抑止 */
+          table { page-break-inside: avoid; }
+          tr { page-break-inside: avoid; }
         }
       `}</style>
     </div>
