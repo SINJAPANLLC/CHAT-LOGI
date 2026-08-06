@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Clock, LayoutDashboard, LogOut, Settings, Menu, X, FileText, Building2, MessageSquare, PanelLeftClose, PanelLeftOpen
 } from 'lucide-react';
+import { NotificationBell } from './NotificationBell';
 
 export function UserLayout({ children }: { children: React.ReactNode }) {
   const hasToken = !!localStorage.getItem('sinjapan_auth_token');
@@ -195,6 +196,9 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
           </Link>
 
           <div className="flex-1" />
+
+          {/* Notification bell — logged in only */}
+          {isLoggedIn && <NotificationBell />}
 
           {/* Auth buttons — not logged in only */}
           {!isLoggedIn && !hasToken && (

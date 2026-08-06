@@ -65,6 +65,58 @@ router.get("/admin/notifications", requireAdmin, async (_req, res): Promise<void
   })));
 });
 
+// POST /admin/shipments/:id/notify-price-approval — 値引き承認通知
+router.post("/admin/shipments/:id/notify-price-approval", requireAdmin, async (req, res): Promise<void> => {
+  const shipmentId = parseInt(req.params.id, 10);
+  if (isNaN(shipmentId)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const { customPrice, message: customMsg } = req.body as { customPrice?: number; message?: string };
+
+  // 案件と顧客を取得
+  const { shipmentsTable } = await import("@workspace/db");
+  const [shipment] = await db
+    .select({ id: shipmentsTable.id, userId: shipmentsTable.userId, customerPrice: shipmentsTable.customerPrice })
+    .from(shipmentsTable)
+    .where(eq(shipmentsTable.id, shipmentId));
+
+  if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+  if (!shipment.userId) { res.status(400).json({ error: "顧客情報がありません" }); return; }
+
+  // 金額を更新（値引き後の金額が指定された場合）
+  if (customPrice && customPrice > 0) {
+    await db.update(shipmentsTable)
+      .set({ customerPrice: customPrice.toString() as any })
+      .where(eq(shipmentsTable.id, shipmentId));
+  }
+
+  const priceLabel = customPrice
+    ? `¥${new Intl.NumberFormat('ja-JP').format(customPrice)}`
+    : `¥${new Intl.NumberFormat('ja-JP').format(Number(shipment.customerPrice))}`;
+
+  const title = `案件 #${shipmentId} 値引き承認のお知らせ`;
+  const body = customMsg || `案件 #${shipmentId} の配送料金を ${priceLabel}（税別）にてご対応できることになりました。ご確認のうえ、ご依頼をお進めください。`;
+
+  // DB通知レコード
+  const [notif] = await db.insert(notificationsTable).values({
+    userId: shipment.userId,
+    shipmentId,
+    title,
+    message: body,
+    readStatus: false,
+  }).returning();
+
+  // メール送信
+  const [user] = await db.select({ name: usersTable.name, email: usersTable.email })
+    .from(usersTable).where(eq(usersTable.id, shipment.userId));
+
+  if (user) {
+    const html = buildEmailHtml(title, body, user.name ?? undefined);
+    await sendEmail(user.email, title, html);
+  }
+
+  res.json({ ok: true, notificationId: notif.id });
+});
+
 // POST /admin/notifications/send — 通知メール送信
 // body: { userIds?: number[], sendAll?: boolean, subject, body }
 router.post("/admin/notifications/send", requireAdmin, async (req, res): Promise<void> => {

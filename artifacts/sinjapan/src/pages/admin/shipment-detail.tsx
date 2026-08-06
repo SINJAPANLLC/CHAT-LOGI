@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ArrowLeft, Save, Pencil, Bot, User, FileText, Send, X, MapPin, Navigation } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Pencil, Bot, User, FileText, Send, X, MapPin, Navigation, Bell } from 'lucide-react';
+import { customFetch } from '@workspace/api-client-react/custom-fetch';
 import { Link } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 
@@ -68,6 +69,10 @@ export default function AdminShipmentDetail() {
   const [showInstruction, setShowInstruction] = useState(false);
   const [driverToken, setDriverToken] = useState<string | null>(null);
   const [generatingToken, setGeneratingToken] = useState(false);
+  const [showNotifyModal, setShowNotifyModal] = useState(false);
+  const [notifyPrice, setNotifyPrice] = useState('');
+  const [notifyMsg, setNotifyMsg] = useState('');
+  const [sendingNotify, setSendingNotify] = useState(false);
 
   React.useEffect(() => {
     if (shipment) {
@@ -438,6 +443,19 @@ export default function AdminShipmentDetail() {
             <FileText className="h-4 w-4" />
             指示書を送付する
           </button>
+
+          {/* 値引き承認通知ボタン */}
+          <button
+            onClick={() => {
+              setNotifyPrice(shipment.customerPrice ? String(Math.round(Number(shipment.customerPrice))) : '');
+              setNotifyMsg('');
+              setShowNotifyModal(true);
+            }}
+            className="w-full flex items-center justify-center gap-2 rounded-xl border border-border py-4 text-sm font-medium hover:bg-muted transition-colors"
+          >
+            <Bell className="h-4 w-4" />
+            値引き承認を顧客に通知
+          </button>
         </div>
 
         {/* 右カラム */}
@@ -674,6 +692,84 @@ export default function AdminShipmentDetail() {
 
         </div>
       </div>
+
+      {/* 値引き承認通知モーダル */}
+      {showNotifyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/40" onClick={() => setShowNotifyModal(false)} />
+          <div className="relative bg-background rounded-2xl shadow-2xl w-full max-w-md z-10">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div className="flex items-center gap-2 font-semibold">
+                <Bell className="h-4 w-4" />値引き承認通知
+              </div>
+              <button onClick={() => setShowNotifyModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                お客様に値引き後の金額を通知します。金額を更新する場合は下記に入力してください。
+              </p>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">承認金額（円・税別）</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">¥</span>
+                  <input
+                    type="number"
+                    value={notifyPrice}
+                    onChange={e => setNotifyPrice(e.target.value)}
+                    placeholder={shipment.customerPrice ? String(Math.round(Number(shipment.customerPrice))) : '0'}
+                    className="w-full border border-border rounded-lg pl-7 pr-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">現在の見積もり: ¥{fmt(shipment.customerPrice)}</p>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium">メッセージ（任意）</label>
+                <textarea
+                  value={notifyMsg}
+                  onChange={e => setNotifyMsg(e.target.value)}
+                  rows={3}
+                  placeholder="空欄の場合は自動生成されます"
+                  className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background resize-y focus:outline-none focus:ring-2 focus:ring-foreground/20"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
+              <Button variant="outline" onClick={() => setShowNotifyModal(false)}>キャンセル</Button>
+              <Button
+                disabled={sendingNotify}
+                onClick={async () => {
+                  setSendingNotify(true);
+                  try {
+                    const token = localStorage.getItem('sinjapan_auth_token');
+                    const res = await fetch(`/api/admin/shipments/${shipmentId}/notify-price-approval`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                      body: JSON.stringify({
+                        customPrice: notifyPrice ? Number(notifyPrice) : undefined,
+                        message: notifyMsg || undefined,
+                      }),
+                    });
+                    if (!res.ok) throw new Error('送信失敗');
+                    if (notifyPrice) {
+                      queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
+                    }
+                    toast({ title: '通知を送信しました' });
+                    setShowNotifyModal(false);
+                  } catch {
+                    toast({ variant: 'destructive', title: '送信に失敗しました' });
+                  } finally {
+                    setSendingNotify(false);
+                  }
+                }}
+              >
+                {sendingNotify ? <><Loader2 className="h-4 w-4 animate-spin mr-1.5" />送信中…</> : <><Send className="h-4 w-4 mr-1.5" />通知を送る</>}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 指示書送付モーダル */}
       {showInstruction && (
