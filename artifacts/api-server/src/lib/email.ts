@@ -118,15 +118,15 @@ export function buildSalesEmailHtml(opts: SalesEmailOptions): string {
           <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
             <tr>
               <td width="33%" style="padding-right:12px;vertical-align:top">
-                <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111">🤖 AI見積もり</p>
+                <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111">AI見積もり</p>
                 <p style="margin:0;font-size:12px;color:#666;line-height:1.6">チャットで完結。最短即日手配。</p>
               </td>
               <td width="33%" style="padding:0 6px;vertical-align:top">
-                <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111">📍 リアルタイム追跡</p>
+                <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111">リアルタイム追跡</p>
                 <p style="margin:0;font-size:12px;color:#666;line-height:1.6">配送状況を24時間確認可能。</p>
               </td>
               <td width="33%" style="padding-left:12px;vertical-align:top">
-                <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111">💴 コスト削減</p>
+                <p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#111">コスト削減</p>
                 <p style="margin:0;font-size:12px;color:#666;line-height:1.6">多数の運送会社から最適提案。</p>
               </td>
             </tr>
