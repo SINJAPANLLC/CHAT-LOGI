@@ -47,4 +47,13 @@ router.patch("/users/:id", requireAdmin, async (req, res): Promise<void> => {
   res.json(formatUser(updated));
 });
 
+router.delete("/users/:id", requireAdmin, async (req, res): Promise<void> => {
+  const id = parseId(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "無効なID" }); return; }
+
+  const [deleted] = await db.delete(usersTable).where(eq(usersTable.id, id)).returning();
+  if (!deleted) { res.status(404).json({ error: "ユーザーが見つかりません" }); return; }
+  res.json({ success: true });
+});
+
 export default router;

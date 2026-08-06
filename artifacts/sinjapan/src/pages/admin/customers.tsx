@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useListUsers } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Loader2, Search, X, Save, ChevronRight } from 'lucide-react';
+import { Loader2, Search, X, Save, ChevronRight, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -57,6 +58,8 @@ export default function AdminCustomers() {
   const [editMode, setEditMode] = useState(false);
   const [form, setForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (selected) {
@@ -109,6 +112,29 @@ export default function AdminCustomers() {
   };
 
   const set = (k: string, v: any) => setForm((p: any) => ({ ...p, [k]: v }));
+
+  const handleDelete = async () => {
+    if (!selected) return;
+    setDeleting(true);
+    try {
+      const token = localStorage.getItem('sinjapan_auth_token');
+      const res = await fetch(`/api/users/${selected.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) throw new Error();
+      queryClient.setQueryData(['/api/users'], (old: any[]) =>
+        old?.filter(u => u.id !== selected.id)
+      );
+      setSelected(null);
+      setConfirmDelete(false);
+      toast({ title: 'ユーザーを削除しました' });
+    } catch {
+      toast({ variant: 'destructive', title: '削除に失敗しました' });
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -199,7 +225,16 @@ export default function AdminCustomers() {
               </div>
               <div className="flex items-center gap-2">
                 {!editMode ? (
-                  <Button size="sm" variant="outline" onClick={() => setEditMode(true)}>編集</Button>
+                  <>
+                    <Button size="sm" variant="outline" onClick={() => setEditMode(true)}>編集</Button>
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title="ユーザーを削除"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </>
                 ) : (
                   <>
                     <Button size="sm" variant="ghost" onClick={() => setEditMode(false)}>キャンセル</Button>
@@ -307,6 +342,28 @@ export default function AdminCustomers() {
             </div>
           </>
         )}
+      {/* 削除確認ダイアログ */}
+      <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>ユーザーを削除しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-semibold">{selected?.name}</span>（{selected?.email}）を削除します。この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
+              削除する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       </div>
     </div>
   );
