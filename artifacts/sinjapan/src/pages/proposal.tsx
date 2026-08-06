@@ -300,7 +300,7 @@ export default function Proposal() {
                 依頼確定後にお支払いカードの登録が必要です
               </div>
               <div className="pl-5">
-                <a href="/admin/invoices" className="underline underline-offset-2 text-white/70 hover:text-white transition-colors">
+                <a href="/invoices" className="underline underline-offset-2 text-white/70 hover:text-white transition-colors">
                   法人請求書払い申請はこちら →
                 </a>
               </div>
