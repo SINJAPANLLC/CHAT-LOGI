@@ -181,7 +181,7 @@ export default function BlogArticle() {
               物流コストを<br />削減したいですか？
             </p>
             <p style={{ color: '#aaa', fontSize: 12, margin: '0 0 20px', lineHeight: 1.7 }}>
-              チャットするだけ。あとはSIN JAPANのスタッフが手配します。
+              チャットするだけ。あとはChat LOGIが手配します。
             </p>
             <Link href="/lp">
               <span style={{ display: 'block', background: '#fff', color: '#000', padding: '12px 0', borderRadius: 8, fontWeight: 700, fontSize: 14, cursor: 'pointer', textAlign: 'center' }}>

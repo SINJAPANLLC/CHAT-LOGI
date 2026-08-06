@@ -44,7 +44,7 @@ function buildPreviewHtml(subject: string, bodyText: string, ctaText: string) {
   <table width="100%" cellpadding="0" cellspacing="0">
     <tr>
       <td width="33%" style="padding-right:8px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">チャットで依頼</p><p style="margin:0;font-size:11px;color:#666">入力するだけ。最短即日手配。</p></td>
-      <td width="33%" style="padding:0 4px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">プロが手配</p><p style="margin:0;font-size:11px;color:#666">SIN JAPANのスタッフが対応。</p></td>
+      <td width="33%" style="padding:0 4px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">プロが手配</p><p style="margin:0;font-size:11px;color:#666">Chat LOGIが手配します。</p></td>
       <td width="33%" style="padding-left:8px;vertical-align:top"><p style="margin:0 0 3px;font-size:12px;font-weight:700;color:#111">状況を確認</p><p style="margin:0;font-size:11px;color:#666">配送状況を24時間確認可能。</p></td>
     </tr>
   </table>
@@ -67,7 +67,7 @@ const TEMPLATES = [
   {
     label: '新規ご挨拶',
     subject: '【Chat LOGI】はじめまして',
-    body: '{会社名} {担当者名}\n\nはじめまして。物流代行サービス「Chat LOGI」を運営している合同会社SIN JAPANと申します。\n\nChat LOGIはチャットで依頼するだけで、弊社スタッフが配車・手配をすべて代行するサービスです。\n貴社の物流業務をよりシンプルにできると考え、ご連絡いたしました。\n\nぜひ一度、詳細をご説明する機会をいただけますと幸いです。\n\nよろしくお願いいたします。',
+    body: '{会社名} {担当者名}\n\nはじめまして。物流代行サービス「Chat LOGI」と申します。\n\nChat LOGIはチャットで依頼するだけで、配車・手配をすべて代行するサービスです。\n貴社の物流業務をよりシンプルにできると考え、ご連絡いたしました。\n\nぜひ一度、詳細をご説明する機会をいただけますと幸いです。\n\nよろしくお願いいたします。',
   },
   {
     label: 'サービス案内',

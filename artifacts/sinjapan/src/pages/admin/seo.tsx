@@ -18,10 +18,10 @@ type SeoField = { label: string; key: string; type: 'input' | 'textarea'; placeh
 
 const SEO_FIELDS: SeoField[] = [
   { label: 'サイトタイトル',        key: 'title',          type: 'input',    placeholder: 'Chat LOGI | チャットするだけで荷物が運べる' },
-  { label: 'メタディスクリプション', key: 'description',    type: 'textarea', placeholder: 'チャットで依頼するだけ。あとはSIN JAPANのスタッフが配車・手配をすべて代行します。' },
+  { label: 'メタディスクリプション', key: 'description',    type: 'textarea', placeholder: 'チャットで依頼するだけ。あとはChat LOGIが配車・手配をすべて代行します。' },
   { label: 'メタキーワード',         key: 'keywords',       type: 'input',    placeholder: '物流, 配送, 物流代行, 配車, 運送' },
   { label: 'OGタイトル（SNS表示）', key: 'ogTitle',        type: 'input',    placeholder: 'Chat LOGI | チャットするだけで荷物が運べる' },
-  { label: 'OG説明文（SNS表示）',   key: 'ogDescription',  type: 'textarea', placeholder: 'チャットで依頼するだけ。SIN JAPANのスタッフが手配します。' },
+  { label: 'OG説明文（SNS表示）',   key: 'ogDescription',  type: 'textarea', placeholder: 'チャットで依頼するだけ。Chat LOGIが手配します。' },
   { label: 'OG画像URL',            key: 'ogImage',        type: 'input',    placeholder: 'https://example.com/og-image.png' },
   { label: 'Google Analyticsタグ', key: 'gaTag',          type: 'input',    placeholder: 'G-XXXXXXXXXX' },
   { label: 'Googleサーチコンソール確認コード', key: 'gscCode', type: 'input', placeholder: 'google-site-verification=...' },
