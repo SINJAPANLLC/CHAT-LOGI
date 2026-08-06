@@ -62,12 +62,6 @@ export default function Settings() {
   // Billing
   const [billingAddress, setBillingAddress] = useState('');
 
-  // Card
-  const [cardHolderName, setCardHolderName] = useState('');
-  const [cardNumber, setCardNumber] = useState('');   // input only, never saved raw
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCvc, setCardCvc] = useState('');         // never saved
-
   // Password
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -79,11 +73,6 @@ export default function Settings() {
     setCompanyName((user as any).companyName ?? '');
     setPhone((user as any).phone ?? '');
     setBillingAddress((user as any).billingAddress ?? '');
-    setCardHolderName((user as any).cardHolderName ?? '');
-    setCardExpiry((user as any).cardExpiry ?? '');
-    // Display masked card number if saved
-    const last4 = (user as any).cardLast4;
-    if (last4) setCardNumber(`**** **** **** ${last4}`);
   }, [user]);
 
   const save = async (data: Record<string, string>) => {
@@ -106,23 +95,6 @@ export default function Settings() {
     save({ billingAddress });
   };
 
-  const handleCardSave = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Parse raw card number into last4 + brand
-    const raw = cardNumber.replace(/\s/g, '');
-    const isNew = raw.length > 4 && !raw.startsWith('*');
-    const payload: Record<string, string> = { cardHolderName, cardExpiry };
-    if (isNew) {
-      payload.cardLast4 = raw.slice(-4);
-      // Simple brand detection
-      payload.cardBrand = raw.startsWith('4') ? 'Visa'
-        : raw.startsWith('5') ? 'Mastercard'
-        : raw.startsWith('34') || raw.startsWith('37') ? 'Amex'
-        : 'Other';
-    }
-    save(payload);
-  };
-
   const handlePasswordSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
@@ -138,17 +110,6 @@ export default function Settings() {
     } catch (err: any) {
       toast({ title: err?.response?.data?.error ?? 'パスワードの変更に失敗しました', variant: 'destructive' });
     }
-  };
-
-  // Format card number input (groups of 4)
-  const handleCardNumberChange = (v: string) => {
-    const clean = v.replace(/\D/g, '').slice(0, 16);
-    setCardNumber(clean.replace(/(.{4})/g, '$1 ').trim());
-  };
-
-  const handleExpiryChange = (v: string) => {
-    const clean = v.replace(/\D/g, '').slice(0, 4);
-    setCardExpiry(clean.length > 2 ? `${clean.slice(0,2)}/${clean.slice(2)}` : clean);
   };
 
   return (
@@ -179,49 +140,6 @@ export default function Settings() {
             onChange={setBillingAddress}
             placeholder="東京都渋谷区〇〇 1-2-3"
           />
-          <SaveButton pending={updateMe.isPending} />
-        </form>
-      </Section>
-
-      <div className="border-t border-border" />
-
-      {/* ── カード情報 ── */}
-      <Section title="カード情報">
-        <form onSubmit={handleCardSave} className="space-y-4">
-          <Field
-            label="カード番号"
-            value={cardNumber}
-            onChange={handleCardNumberChange}
-            placeholder="1234 5678 9012 3456"
-          />
-          <Field
-            label="カード名義（ローマ字）"
-            value={cardHolderName}
-            onChange={setCardHolderName}
-            placeholder="TARO YAMADA"
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field
-              label="有効期限（MM/YY）"
-              value={cardExpiry}
-              onChange={handleExpiryChange}
-              placeholder="12/27"
-            />
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium">セキュリティコード</label>
-              <input
-                type="password"
-                value={cardCvc}
-                onChange={e => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                placeholder="•••"
-                maxLength={4}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/40 transition-colors"
-              />
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            カード番号・セキュリティコードは保存されません。カード番号の下4桁のみ記録されます。
-          </p>
           <SaveButton pending={updateMe.isPending} />
         </form>
       </Section>
