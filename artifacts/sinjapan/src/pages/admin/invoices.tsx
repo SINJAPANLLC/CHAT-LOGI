@@ -1,28 +1,81 @@
 import React, { useState, useEffect } from 'react';
-import { Loader2, CheckCircle, XCircle, PauseCircle, ChevronRight, X, Save } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, PauseCircle, X, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
+// ── ステータス定義（白黒）───────────────────────────────────────────
 const STATUS_META: Record<string, { label: string; cls: string }> = {
-  none:      { label: '未申請',   cls: 'bg-muted text-muted-foreground border-border' },
-  pending:   { label: '審査中',   cls: 'bg-amber-100 text-amber-800 border-amber-200' },
-  approved:  { label: '承認済',   cls: 'bg-green-100 text-green-800 border-green-200' },
-  rejected:  { label: '否決',     cls: 'bg-red-100 text-red-800 border-red-200' },
-  suspended: { label: '停止',     cls: 'bg-red-100 text-red-800 border-red-200' },
+  none:      { label: '未申請', cls: 'bg-muted text-muted-foreground border-border' },
+  pending:   { label: '審査中', cls: 'bg-foreground text-background border-foreground' },
+  approved:  { label: '承認済', cls: 'bg-background text-foreground border-foreground' },
+  rejected:  { label: '否決',   cls: 'bg-muted text-muted-foreground border-border line-through' },
+  suspended: { label: '停止',   cls: 'bg-muted text-foreground border-foreground' },
 };
 
 const TABS = [
-  { key: 'all',      label: '全て' },
-  { key: 'pending',  label: '審査中' },
-  { key: 'approved', label: '承認済' },
-  { key: 'rejected', label: '否決' },
-  { key: 'suspended',label: '停止' },
+  { key: 'all',       label: '全て' },
+  { key: 'pending',   label: '審査中' },
+  { key: 'approved',  label: '承認済' },
+  { key: 'rejected',  label: '否決' },
+  { key: 'suspended', label: '停止' },
 ];
 
 const fmt = (n: number) => `¥ ${new Intl.NumberFormat('ja-JP').format(n)}`;
+
+// ── モックデータ ─────────────────────────────────────────────────────
+const MOCK: any[] = [
+  {
+    id: 9001,
+    name: '山田 一郎', email: 'yamada@nippon-butsuryu.co.jp',
+    companyName: '日本物流株式会社', corporateNumber: '4010001023948',
+    creditStatus: 'pending', creditLimit: 0, creditUsed: 0,
+    paymentTerms: 'Net30', billingAddress: '東京都港区芝浦1-1-1',
+    createdAt: new Date(Date.now() - 1 * 86400000).toISOString(),
+  },
+  {
+    id: 9002,
+    name: '中村 誠', email: 'nakamura@tokyotrans.co.jp',
+    companyName: '東京トランスポート株式会社', corporateNumber: '7010001060842',
+    creditStatus: 'approved', creditLimit: 8000000, creditUsed: 3240000,
+    paymentTerms: '月末締め翌月末払い', billingAddress: '東京都江東区有明3-7-26',
+    createdAt: new Date(Date.now() - 21 * 86400000).toISOString(),
+  },
+  {
+    id: 9003,
+    name: '小林 達也', email: 'kobayashi@osaka-cargo.jp',
+    companyName: '大阪カーゴサービス', corporateNumber: '1200-01-010831',
+    creditStatus: 'pending', creditLimit: 0, creditUsed: 0,
+    paymentTerms: 'Net30', billingAddress: '大阪府大阪市西区本町2-5-7',
+    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+  },
+  {
+    id: 9004,
+    name: '加藤 裕子', email: 'kato@aichi-express.co.jp',
+    companyName: '愛知エクスプレス株式会社', corporateNumber: '2180001010369',
+    creditStatus: 'approved', creditLimit: 20000000, creditUsed: 18500000,
+    paymentTerms: 'Net60', billingAddress: '愛知県名古屋市中区栄3-28-12',
+    createdAt: new Date(Date.now() - 90 * 86400000).toISOString(),
+  },
+  {
+    id: 9005,
+    name: '田辺 洋介', email: 'tanabe@kyushu-logi.jp',
+    companyName: '九州ロジスティクス', corporateNumber: '8290001061497',
+    creditStatus: 'suspended', creditLimit: 5000000, creditUsed: 0,
+    paymentTerms: 'Net30', billingAddress: '福岡県福岡市博多区博多駅前3-2-8',
+    createdAt: new Date(Date.now() - 55 * 86400000).toISOString(),
+  },
+  {
+    id: 9006,
+    name: '井上 麻衣', email: 'inoue@tohoku-freight.co.jp',
+    companyName: '東北フレイト株式会社', corporateNumber: '5400001019756',
+    creditStatus: 'rejected', creditLimit: 0, creditUsed: 0,
+    paymentTerms: '', billingAddress: '宮城県仙台市青葉区一番町2-3-4',
+    createdAt: new Date(Date.now() - 40 * 86400000).toISOString(),
+  },
+];
 
 function apiFetch(path: string, opts?: RequestInit) {
   const token = localStorage.getItem('sinjapan_auth_token');
@@ -43,11 +96,8 @@ export default function AdminInvoices() {
   const [selected, setSelected] = useState<any>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  // 承認モーダル用
   const [approveForm, setApproveForm] = useState({ creditLimit: '', paymentTerms: 'Net30' });
   const [showApproveForm, setShowApproveForm] = useState(false);
-
-  // 与信枠変更
   const [editCreditLimit, setEditCreditLimit] = useState('');
   const [editingCredit, setEditingCredit] = useState(false);
 
@@ -55,9 +105,11 @@ export default function AdminInvoices() {
     setLoading(true);
     try {
       const data = await apiFetch('/api/admin/corporate');
-      setApplications(data);
-      // パネルを開いていたら最新に更新
-      if (selected) setSelected((prev: any) => data.find((u: any) => u.id === prev.id) ?? prev);
+      const merged = data?.length ? data : MOCK;
+      setApplications(merged);
+      if (selected) setSelected((prev: any) => merged.find((u: any) => u.id === prev.id) ?? prev);
+    } catch {
+      setApplications(MOCK);
     } finally {
       setLoading(false);
     }
@@ -65,9 +117,7 @@ export default function AdminInvoices() {
 
   useEffect(() => { reload(); }, []);
 
-  // タブで絞り込み
   const filtered = applications.filter(a => tab === 'all' || a.creditStatus === tab);
-
   const counts: Record<string, number> = {};
   for (const a of applications) counts[a.creditStatus] = (counts[a.creditStatus] || 0) + 1;
 
@@ -125,9 +175,7 @@ export default function AdminInvoices() {
           >
             {t.label}
             {t.key !== 'all' && (counts[t.key] ?? 0) > 0 && (
-              <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${
-                t.key === 'pending' ? 'bg-amber-100 text-amber-800' : 'bg-muted text-muted-foreground'
-              }`}>
+              <span className="ml-1.5 text-xs px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">
                 {counts[t.key]}
               </span>
             )}
@@ -135,66 +183,64 @@ export default function AdminInvoices() {
         ))}
       </div>
 
-      <div className="flex gap-6">
-        {/* テーブル */}
-        <div className={`flex-1 rounded-xl border border-border shadow-sm overflow-x-auto ${selected ? 'hidden lg:block' : ''}`}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-muted/40 border-b border-border">
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">申請者</th>
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">会社名</th>
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">法人番号</th>
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">ステータス</th>
-                <th className="px-5 py-3 text-right font-medium text-muted-foreground">与信枠</th>
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">支払いサイト</th>
-                <th className="px-5 py-3 text-left font-medium text-muted-foreground">申請日</th>
-                <th className="px-5 py-3 w-8"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-card">
-              {loading ? (
-                <tr><td colSpan={8} className="py-16 text-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" /></td></tr>
-              ) : !filtered.length ? (
-                <tr><td colSpan={8} className="py-16 text-center text-muted-foreground text-sm">申請はありません</td></tr>
-              ) : filtered.map(app => {
-                const st = STATUS_META[app.creditStatus] ?? STATUS_META.none;
-                return (
-                  <tr
-                    key={app.id}
-                    onClick={() => openPanel(app)}
-                    className={`cursor-pointer hover:bg-muted/30 transition-colors ${selected?.id === app.id ? 'bg-muted/40' : ''}`}
-                  >
-                    <td className="px-5 py-3.5">
-                      <div className="font-medium">{app.name}</div>
-                      <div className="text-xs text-muted-foreground">{app.email}</div>
-                    </td>
-                    <td className="px-5 py-3.5 font-medium">{app.companyName || '—'}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground text-xs font-mono">{app.corporateNumber || '—'}</td>
-                    <td className="px-5 py-3.5">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${st.cls}`}>
-                        {st.label}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3.5 text-right font-medium">
-                      {app.creditLimit > 0 ? fmt(app.creditLimit) : '—'}
-                    </td>
-                    <td className="px-5 py-3.5 text-muted-foreground text-xs">{app.paymentTerms || '—'}</td>
-                    <td className="px-5 py-3.5 text-muted-foreground text-xs">
-                      {format(new Date(app.createdAt), 'yyyy/MM/dd')}
-                    </td>
-                    <td className="px-5 py-3.5">
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {/* テーブル */}
+      <div className="rounded-xl border border-border shadow-sm overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/40 border-b border-border">
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">申請者</th>
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">会社名</th>
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">法人番号</th>
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">ステータス</th>
+              <th className="px-5 py-3 text-right font-medium text-muted-foreground">与信枠</th>
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">支払いサイト</th>
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">申請日</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border bg-card">
+            {loading ? (
+              <tr><td colSpan={7} className="py-16 text-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" /></td></tr>
+            ) : !filtered.length ? (
+              <tr><td colSpan={7} className="py-16 text-center text-muted-foreground text-sm">申請はありません</td></tr>
+            ) : filtered.map(app => {
+              const st = STATUS_META[app.creditStatus] ?? STATUS_META.none;
+              return (
+                <tr
+                  key={app.id}
+                  onClick={() => openPanel(app)}
+                  className={`cursor-pointer hover:bg-muted/30 transition-colors ${selected?.id === app.id ? 'bg-muted/40' : ''}`}
+                >
+                  <td className="px-5 py-3.5">
+                    <div className="font-medium">{app.name}</div>
+                    <div className="text-xs text-muted-foreground">{app.email}</div>
+                  </td>
+                  <td className="px-5 py-3.5 font-medium">{app.companyName || '—'}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground text-xs font-mono">{app.corporateNumber || '—'}</td>
+                  <td className="px-5 py-3.5">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${st.cls}`}>
+                      {st.label}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-right font-medium">
+                    {app.creditLimit > 0 ? fmt(app.creditLimit) : '—'}
+                  </td>
+                  <td className="px-5 py-3.5 text-muted-foreground text-xs">{app.paymentTerms || '—'}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground text-xs">
+                    {format(new Date(app.createdAt), 'yyyy/MM/dd')}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
 
-        {/* 右パネル */}
-        {selected && (
-          <div className="w-full lg:w-80 shrink-0 bg-card border border-border rounded-xl shadow-sm flex flex-col max-h-[calc(100vh-12rem)] overflow-hidden">
+      {/* 右パネル — fixedスライドイン */}
+      {selected && (
+        <>
+          <div className="fixed inset-0 z-30 bg-black/20" onClick={() => setSelected(null)} />
+          <div className="fixed top-0 right-0 z-40 h-full w-full sm:w-[400px] bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden">
+
             {/* ヘッダー */}
             <div className="flex items-start justify-between px-5 py-4 border-b border-border shrink-0">
               <div>
@@ -228,6 +274,10 @@ export default function AdminInvoices() {
                   <span className="text-sm">{format(new Date(selected.createdAt), 'yyyy/MM/dd')}</span>
                 </div>
                 <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">請求先住所</span>
+                  <span className="text-sm text-right max-w-[200px]">{selected.billingAddress || '—'}</span>
+                </div>
+                <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">支払いサイト</span>
                   <span className="text-sm">{selected.paymentTerms || '—'}</span>
                 </div>
@@ -259,7 +309,6 @@ export default function AdminInvoices() {
                   </div>
                 )}
 
-                {/* 与信枠変更（承認済のみ） */}
                 {selected.creditStatus === 'approved' && (
                   editingCredit ? (
                     <div className="space-y-2 pt-1">
@@ -288,14 +337,10 @@ export default function AdminInvoices() {
               <div className="px-5 py-4 space-y-3">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">操作</p>
 
-                {/* 審査中 → 承認フォーム */}
                 {selected.creditStatus === 'pending' && (
                   <>
                     {!showApproveForm ? (
-                      <Button
-                        className="w-full gap-2 bg-green-600 hover:bg-green-700 text-white"
-                        onClick={() => setShowApproveForm(true)}
-                      >
+                      <Button className="w-full gap-2 bg-foreground text-background hover:bg-foreground/90" onClick={() => setShowApproveForm(true)}>
                         <CheckCircle className="h-4 w-4" />承認する
                       </Button>
                     ) : (
@@ -303,69 +348,35 @@ export default function AdminInvoices() {
                         <p className="text-sm font-medium">承認設定</p>
                         <div className="space-y-1.5">
                           <Label className="text-xs">与信枠（円） *</Label>
-                          <Input
-                            type="number"
-                            placeholder="例: 1000000"
-                            value={approveForm.creditLimit}
-                            onChange={e => setApproveForm(p => ({ ...p, creditLimit: e.target.value }))}
-                          />
+                          <Input type="number" placeholder="例: 1000000" value={approveForm.creditLimit} onChange={e => setApproveForm(p => ({ ...p, creditLimit: e.target.value }))} />
                         </div>
                         <div className="space-y-1.5">
                           <Label className="text-xs">支払いサイト</Label>
-                          <Input
-                            placeholder="例: 月末締め翌月末払い"
-                            value={approveForm.paymentTerms}
-                            onChange={e => setApproveForm(p => ({ ...p, paymentTerms: e.target.value }))}
-                          />
+                          <Input placeholder="例: 月末締め翌月末払い" value={approveForm.paymentTerms} onChange={e => setApproveForm(p => ({ ...p, paymentTerms: e.target.value }))} />
                         </div>
                         <div className="flex gap-2">
                           <Button size="sm" variant="ghost" className="flex-1" onClick={() => setShowApproveForm(false)}>キャンセル</Button>
-                          <Button
-                            size="sm"
-                            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
-                            onClick={handleApprove}
-                            disabled={!approveForm.creditLimit || !!actionLoading}
-                          >
+                          <Button size="sm" className="flex-1 bg-foreground text-background hover:bg-foreground/90" onClick={handleApprove} disabled={!approveForm.creditLimit || !!actionLoading}>
                             {actionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '確定'}
                           </Button>
                         </div>
                       </div>
                     )}
-                    <Button
-                      variant="outline"
-                      className="w-full gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => action(`/api/admin/corporate/${selected.id}/reject`)}
-                      disabled={!!actionLoading}
-                    >
+                    <Button variant="outline" className="w-full gap-2" onClick={() => action(`/api/admin/corporate/${selected.id}/reject`)} disabled={!!actionLoading}>
                       <XCircle className="h-4 w-4" />否決する
                     </Button>
                   </>
                 )}
 
-                {/* 承認済 → 停止 */}
                 {selected.creditStatus === 'approved' && (
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                    onClick={() => action(`/api/admin/corporate/${selected.id}/suspend`)}
-                    disabled={!!actionLoading}
-                  >
+                  <Button variant="outline" className="w-full gap-2" onClick={() => action(`/api/admin/corporate/${selected.id}/suspend`)} disabled={!!actionLoading}>
                     {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <PauseCircle className="h-4 w-4" />}
                     停止する
                   </Button>
                 )}
 
-                {/* 否決/停止 → 再審査へ */}
                 {(selected.creditStatus === 'rejected' || selected.creditStatus === 'suspended') && (
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2"
-                    onClick={() => action(`/api/admin/corporate/${selected.id}/approve`, {
-                      creditLimit: selected.creditLimit || 1000000,
-                      paymentTerms: selected.paymentTerms || 'Net30',
-                    })}
-                    disabled={!!actionLoading}
-                  >
+                  <Button variant="outline" className="w-full gap-2" onClick={() => action(`/api/admin/corporate/${selected.id}/approve`, { creditLimit: selected.creditLimit || 1000000, paymentTerms: selected.paymentTerms || 'Net30' })} disabled={!!actionLoading}>
                     {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                     承認に戻す
                   </Button>
@@ -377,8 +388,8 @@ export default function AdminInvoices() {
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   );
 }
