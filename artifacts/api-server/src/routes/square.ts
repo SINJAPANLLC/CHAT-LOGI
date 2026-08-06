@@ -109,13 +109,25 @@ router.post("/square/authorize", requireAuth, async (req, res): Promise<void> =>
   const [shipment] = await db.select().from(shipmentsTable).where(eq(shipmentsTable.id, Number(shipmentId))).limit(1);
   if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
 
+  // 税込み請求金額（消費税10%）
+  const baseAmount = Number(shipment.customerPrice) || 0;
+  const taxAmount = Math.round(baseAmount * 0.1);
+  const totalAmount = baseAmount + taxAmount;
+
+  if (totalAmount <= 0) {
+    res.status(400).json({ error: "請求金額が設定されていません" });
+    return;
+  }
+
+  // 実金額を即時決済（autocomplete: true = オーソリ+キャプチャを同時に実行）
   const squareRes = await squareFetch("/v2/payments", "POST", {
     source_id: sourceId,
     idempotency_key: randomUUID(),
-    amount_money: { amount: 1, currency: "JPY" }, // カード確認用1円オーソリ
+    amount_money: { amount: totalAmount, currency: "JPY" },
     location_id: process.env.SQUARE_LOCATION_ID,
-    autocomplete: false, // オーソリのみ（キャプチャは納品後）
+    autocomplete: true,
     note: `Chat LOGI 案件 #${shipment.id}`,
+    buyer_email_address: req.session?.userEmail ?? undefined,
   });
 
   const data = await squareRes.json() as any;
@@ -127,18 +139,16 @@ router.post("/square/authorize", requireAuth, async (req, res): Promise<void> =>
 
   const paymentId = data.payment?.id;
 
-  // 1円オーソリは即void（仮押さえを即解放）
-  await squareFetch(`/v2/payments/${paymentId}/cancel`, "POST", {});
-
-  // カード確認完了 → 決済完了扱いにしてステータスを進める
+  // 決済完了をDBに記録
   await db.update(shipmentsTable).set({
     paymentMethod: "card",
     paymentStatus: "決済完了",
     status: "請求完了",
+    squarePaymentId: paymentId,
     updatedAt: new Date(),
   }).where(eq(shipmentsTable.id, Number(shipmentId)));
 
-  res.json({ status: "card_verified" });
+  res.json({ status: "paid", paymentId });
 });
 
 // POST /square/capture/:paymentId — 納品完了後に管理者がキャプチャ
