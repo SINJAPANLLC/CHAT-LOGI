@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useListUsers } from '@workspace/api-client-react';
-import { Loader2, Send, Users, User, History, ChevronDown, ChevronUp, Mail, CheckCheck } from 'lucide-react';
+import { Loader2, Send, Users, User, History, ChevronDown, ChevronUp, Mail, CheckCheck, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -245,7 +245,11 @@ function SendHistory() {
     setLoading(true);
     fetch('/api/admin/notifications', {
       headers: { Authorization: `Bearer ${token}` }
-    }).then(r => r.json()).then(setLogs).finally(() => setLoading(false));
+    }).then(async r => {
+      if (!r.ok) return;
+      const text = await r.text();
+      if (text) setLogs(JSON.parse(text));
+    }).finally(() => setLoading(false));
   }, []);
 
   // 件名でグループ化して表示
@@ -311,10 +315,104 @@ function SendHistory() {
   );
 }
 
+// ── 自動通知設定 ───────────────────────────────────────────────────────────────
+const AUTO_RULES = [
+  { status: '配車確定',   trigger: '管理者がステータスを「配車確定」に変更した時',   mail: true  },
+  { status: '集荷完了',   trigger: '管理者がステータスを「集荷完了」に変更した時',   mail: true  },
+  { status: '配送中',     trigger: '管理者がステータスを「配送中」に変更した時',     mail: true  },
+  { status: '納品完了',   trigger: '管理者がステータスを「納品完了」に変更した時',   mail: true  },
+  { status: '請求完了',   trigger: '管理者がステータスを「請求完了」に変更した時',   mail: true  },
+  { status: 'キャンセル', trigger: 'キャンセルが承認された時',                        mail: true  },
+];
+
+function AutoSettings() {
+  return (
+    <div className="space-y-5">
+      {/* 説明 */}
+      <div className="rounded-xl border border-border bg-muted/30 px-5 py-4 text-sm text-muted-foreground leading-relaxed">
+        案件のステータスが変更されると、対象ユーザーへ自動的に通知メールが送信されます。<br />
+        以下のルールは常時有効です。SMTP設定を行うことで実際のメール送信が有効になります。
+      </div>
+
+      {/* ルール一覧 */}
+      <div className="rounded-xl border border-border overflow-hidden shadow-sm">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/40 border-b border-border">
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">ステータス</th>
+              <th className="px-5 py-3 text-left font-medium text-muted-foreground">トリガー条件</th>
+              <th className="px-5 py-3 text-center font-medium text-muted-foreground">メール</th>
+              <th className="px-5 py-3 text-center font-medium text-muted-foreground">システム内通知</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border bg-card">
+            {AUTO_RULES.map(r => (
+              <tr key={r.status} className="hover:bg-muted/20 transition-colors">
+                <td className="px-5 py-3.5">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md bg-foreground text-background text-xs font-semibold">
+                    {r.status}
+                  </span>
+                </td>
+                <td className="px-5 py-3.5 text-muted-foreground">{r.trigger}</td>
+                <td className="px-5 py-3.5 text-center">
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500" title="有効" />
+                </td>
+                <td className="px-5 py-3.5 text-center">
+                  <span className="inline-block w-2 h-2 rounded-full bg-green-500" title="有効" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* メールプレビュー（サンプル） */}
+      <div className="rounded-xl border border-border overflow-hidden shadow-sm">
+        <div className="px-5 py-3 border-b border-border bg-muted/20">
+          <p className="text-sm font-semibold">メールデザインプレビュー（配車確定の例）</p>
+        </div>
+        <div className="p-5">
+          <div style={{ fontFamily: "'Helvetica Neue', Arial, sans-serif", maxWidth: 560 }}>
+            {/* ヘッダー */}
+            <div style={{ background: '#000', padding: '20px 28px', borderRadius: '10px 10px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ color: '#fff', fontWeight: 800, fontSize: 16, letterSpacing: 1 }}>Chat LOGI</span>
+              <span style={{ background: '#fff', color: '#000', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>配車確定</span>
+            </div>
+            {/* ボディ */}
+            <div style={{ background: '#fff', padding: '28px 28px 20px', border: '1px solid #e5e5e5', borderTop: 'none' }}>
+              <p style={{ margin: '0 0 16px', fontSize: 14, color: '#333', fontWeight: 500 }}>山田 太郎 様</p>
+              <p style={{ margin: '0 0 20px', fontSize: 14, color: '#333', lineHeight: 1.8 }}>
+                担当ドライバーの手配が完了いたしました。<br />
+                ルート：東京都渋谷区 → 大阪府大阪市北区<br /><br />
+                集荷日時が近づきましたら担当者よりご連絡いたします。
+              </p>
+              <div style={{ display: 'inline-block', background: '#000', borderRadius: 8, padding: '10px 24px', marginBottom: 20 }}>
+                <span style={{ color: '#fff', fontSize: 13, fontWeight: 700 }}>案件の詳細を確認する →</span>
+              </div>
+              <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '4px 0 16px' }} />
+              <p style={{ margin: 0, fontSize: 11, color: '#aaa', lineHeight: 1.7 }}>
+                このメールは Chat LOGI から自動送信されています。<br />
+                心当たりのない場合や、ご不明な点は担当者までお問い合わせください。
+              </p>
+            </div>
+            {/* フッター */}
+            <div style={{ background: '#f7f7f7', padding: '14px 28px', borderRadius: '0 0 10px 10px', border: '1px solid #e5e5e5', borderTop: 'none', display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 11, color: '#bbb' }}>© {new Date().getFullYear()} Chat LOGI</span>
+              <span style={{ fontSize: 11, color: '#bbb' }}>マイページ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── メインページ ───────────────────────────────────────────────────────────────
+
 const TABS = [
-  { key: 'send',    label: 'メール送信', icon: Send },
-  { key: 'history', label: '送信履歴',  icon: History },
+  { key: 'send',    label: 'メール送信',   icon: Send },
+  { key: 'history', label: '送信履歴',     icon: History },
+  { key: 'auto',    label: '自動通知設定', icon: Settings },
 ];
 
 export default function AdminNotifications() {
@@ -340,12 +438,9 @@ export default function AdminNotifications() {
         ))}
       </div>
 
-      {tab === 'send' && (
-        <SendForm onSent={() => { setHistoryKey(k => k + 1); }} />
-      )}
-      {tab === 'history' && (
-        <SendHistory key={historyKey} />
-      )}
+      {tab === 'send'    && <SendForm onSent={() => { setHistoryKey(k => k + 1); }} />}
+      {tab === 'history' && <SendHistory key={historyKey} />}
+      {tab === 'auto'    && <AutoSettings />}
     </div>
   );
 }

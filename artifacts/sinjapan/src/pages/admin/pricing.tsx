@@ -3,11 +3,9 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, RotateCcw, Info } from 'lucide-react';
 
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, '');
-
 function apiFetch(path: string, opts?: RequestInit) {
   const token = localStorage.getItem('sinjapan_auth_token');
-  return fetch(`${BASE}${path}`, {
+  return fetch(path, {
     ...opts,
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...opts?.headers },
   }).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); });
@@ -23,7 +21,7 @@ export default function AdminAiPrompt() {
 
   useEffect(() => {
     apiFetch('/api/admin/ai-prompt')
-      .then(d => { setPrompt(d.prompt); setOriginal(d.prompt); })
+      .then((d: { prompt: string }) => { setPrompt(d.prompt ?? ''); setOriginal(d.prompt ?? ''); })
       .catch(() => toast({ variant: 'destructive', title: '読み込みに失敗しました' }))
       .finally(() => setLoading(false));
   }, []);
@@ -39,7 +37,10 @@ export default function AdminAiPrompt() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await apiFetch('/api/admin/ai-prompt', { method: 'PUT', body: JSON.stringify({ prompt }) });
+      await apiFetch('/api/admin/ai-prompt', {
+        method: 'PUT',
+        body: JSON.stringify({ prompt }),
+      });
       setOriginal(prompt);
       toast({ title: 'プロンプトを保存しました' });
     } catch {
@@ -81,15 +82,13 @@ export default function AdminAiPrompt() {
       {/* プレースホルダー説明 */}
       <div className="flex gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
         <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-        <div className="text-xs text-muted-foreground leading-relaxed space-y-0.5">
-          <p>プロンプト内で使える動的プレースホルダー：</p>
-          <p>
-            <code className="bg-background border border-border rounded px-1 py-0.5 font-mono">{'{DATE}'}</code>　今日の日付（例: 2026-08-06）
-            　
-            <code className="bg-background border border-border rounded px-1 py-0.5 font-mono">{'{WEEKDAY}'}</code>　曜日（例: 水）
-            　
-            <code className="bg-background border border-border rounded px-1 py-0.5 font-mono">{'{TOMORROW}'}</code>　明日の日付
-          </p>
+        <div className="text-xs text-muted-foreground leading-relaxed space-y-1">
+          <p className="font-medium text-foreground">使えるプレースホルダー</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <span><code className="bg-background border border-border rounded px-1 font-mono">{'{DATE}'}</code> 今日の日付（例: 2026-08-06）</span>
+            <span><code className="bg-background border border-border rounded px-1 font-mono">{'{WEEKDAY}'}</code> 曜日（例: 水）</span>
+            <span><code className="bg-background border border-border rounded px-1 font-mono">{'{TOMORROW}'}</code> 明日の日付</span>
+          </div>
         </div>
       </div>
 
@@ -104,11 +103,11 @@ export default function AdminAiPrompt() {
             ref={textareaRef}
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
-            className="w-full min-h-[600px] rounded-xl border border-border bg-card px-5 py-4 text-sm font-mono leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-foreground/20 transition-shadow"
+            className="w-full min-h-[500px] rounded-xl border border-border bg-card px-5 py-4 text-sm font-mono leading-relaxed resize-y focus:outline-none focus:ring-2 focus:ring-foreground/20 transition-shadow"
             placeholder="システムプロンプトを入力..."
             spellCheck={false}
           />
-          <div className="absolute bottom-3 right-4 text-xs text-muted-foreground tabular-nums">
+          <div className="absolute bottom-3 right-4 text-xs text-muted-foreground tabular-nums select-none pointer-events-none">
             {prompt.length.toLocaleString()} 文字
           </div>
         </div>
@@ -116,7 +115,7 @@ export default function AdminAiPrompt() {
 
       {/* 変更ありインジケーター */}
       {isDirty && (
-        <p className="text-xs text-amber-600">未保存の変更があります</p>
+        <p className="text-xs text-amber-600 font-medium">● 未保存の変更があります</p>
       )}
     </div>
   );

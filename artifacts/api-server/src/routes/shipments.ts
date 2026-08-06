@@ -12,6 +12,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth";
 import { authorizeOnFile } from "../lib/square-authorize";
+import { sendAutoNotification } from "../lib/autoNotify";
 
 const router: IRouter = Router();
 
@@ -188,8 +189,14 @@ router.patch("/shipments/:id/status", requireAuth, async (req, res): Promise<voi
 
   // 配車確定になったら登録済みカードで自動オーソリ
   if (parsed.data.status === '配車確定' && !shipment.squarePaymentId) {
-    authorizeOnFile(id).catch(() => {}); // 非同期・失敗しても案件更新は成功扱い
+    authorizeOnFile(id).catch(() => {});
   }
+
+  // 自動通知（非同期・失敗しても案件更新は成功扱い）
+  const route = shipment.pickupAddress && shipment.deliveryAddress
+    ? `${shipment.pickupAddress} → ${shipment.deliveryAddress}`
+    : undefined;
+  sendAutoNotification({ shipmentId: id, userId: shipment.userId, status: parsed.data.status, route }).catch(() => {});
 
   res.json(formatShipment(shipment));
 });
@@ -233,6 +240,9 @@ router.patch("/shipments/:id/cancel-approve", requireAdmin, async (req, res): Pr
     .returning();
 
   if (!shipment) { res.status(404).json({ error: "案件が見つかりません" }); return; }
+
+  sendAutoNotification({ shipmentId: id, userId: shipment.userId, status: "キャンセル" }).catch(() => {});
+
   res.json(formatShipment(shipment));
 });
 
