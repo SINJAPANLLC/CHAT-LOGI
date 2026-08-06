@@ -308,6 +308,8 @@ export const UpdateShipmentBody = zod.object({
   "grossProfit": zod.number().optional(),
   "assignedCarrierId": zod.number().optional(),
   "assignedDriverName": zod.string().optional(),
+  "driverPhone": zod.string().optional(),
+  "driverVehicleNumber": zod.string().optional(),
   "paymentStatus": zod.string().optional(),
   "notes": zod.string().optional()
 })

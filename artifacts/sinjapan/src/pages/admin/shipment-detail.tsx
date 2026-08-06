@@ -73,6 +73,8 @@ export default function AdminShipmentDetail() {
         carrierCost: shipment.carrierCost || '',
         assignedCarrierId: shipment.assignedCarrierId ? String(shipment.assignedCarrierId) : 'unassigned',
         assignedDriverName: shipment.assignedDriverName || '',
+        driverPhone: (shipment as any).driverPhone || '',
+        driverVehicleNumber: (shipment as any).driverVehicleNumber || '',
         notes: shipment.notes || ''
       });
     }
@@ -101,6 +103,8 @@ export default function AdminShipmentDetail() {
       const payload: any = {
         notes: formData.notes,
         assignedDriverName: formData.assignedDriverName,
+        driverPhone: formData.driverPhone || undefined,
+        driverVehicleNumber: formData.driverVehicleNumber || undefined,
         carrierCost: formData.carrierCost ? Number(formData.carrierCost) : undefined,
         assignedCarrierId: formData.assignedCarrierId !== 'unassigned' ? Number(formData.assignedCarrierId) : null,
       };
@@ -272,6 +276,22 @@ export default function AdminShipmentDetail() {
                       value={formData.assignedDriverName}
                       onChange={(e) => setFormData({ ...formData, assignedDriverName: e.target.value })}
                       placeholder="山田 太郎"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">ドライバー連絡先</Label>
+                    <Input
+                      value={formData.driverPhone}
+                      onChange={(e) => setFormData({ ...formData, driverPhone: e.target.value })}
+                      placeholder="090-0000-0000"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">車番</Label>
+                    <Input
+                      value={formData.driverVehicleNumber}
+                      onChange={(e) => setFormData({ ...formData, driverVehicleNumber: e.target.value })}
+                      placeholder="品川 100 あ 1234"
                     />
                   </div>
                   <div className="space-y-1.5">
