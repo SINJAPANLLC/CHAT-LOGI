@@ -63,6 +63,7 @@ export default function AdminShipmentDetail() {
 
   const [editMode, setEditMode] = useState(false);
   const [editInfoMode, setEditInfoMode] = useState(false);
+  const [editRevenueMode, setEditRevenueMode] = useState(false);
   const [formData, setFormData] = useState<any>({});
   const [showInstruction, setShowInstruction] = useState(false);
   const [driverToken, setDriverToken] = useState<string | null>(null);
@@ -71,6 +72,8 @@ export default function AdminShipmentDetail() {
   React.useEffect(() => {
     if (shipment) {
       setFormData({
+        // 収益
+        customerPrice: shipment.customerPrice || '',
         // 手配内容
         driverCarrierName: (shipment as any).driverCarrierName || '',
         assignedDriverName: shipment.assignedDriverName || '',
@@ -114,6 +117,8 @@ export default function AdminShipmentDetail() {
   const handleSave = async () => {
     try {
       const payload: any = {
+        // 収益
+        customerPrice: formData.customerPrice ? Number(formData.customerPrice) : undefined,
         // 手配内容
         driverCarrierName: formData.driverCarrierName || undefined,
         assignedDriverName: formData.assignedDriverName || undefined,
@@ -444,26 +449,74 @@ export default function AdminShipmentDetail() {
 
           {/* 収益サマリー */}
           <div className="bg-primary text-primary-foreground rounded-xl shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-primary-foreground/10">
+            <div className="px-5 py-4 border-b border-primary-foreground/10 flex items-center justify-between">
               <h2 className="font-semibold text-sm">収益</h2>
+              {editRevenueMode ? (
+                <div className="flex gap-2">
+                  <button onClick={() => setEditRevenueMode(false)} className="text-xs text-primary-foreground/60 hover:text-primary-foreground px-2 py-1 rounded">キャンセル</button>
+                  <button onClick={async () => { await handleSave(); setEditRevenueMode(false); }} disabled={updateShipment.isPending} className="text-xs bg-primary-foreground/20 hover:bg-primary-foreground/30 text-primary-foreground px-3 py-1 rounded flex items-center gap-1">
+                    <Save className="h-3 w-3" />保存
+                  </button>
+                </div>
+              ) : (
+                <button onClick={() => setEditRevenueMode(true)} className="text-xs text-primary-foreground/60 hover:text-primary-foreground flex items-center gap-1">
+                  <Pencil className="h-3 w-3" />編集
+                </button>
+              )}
             </div>
-            <div className="divide-y divide-primary-foreground/10">
-              <div className="flex justify-between items-center px-5 py-3">
-                <span className="text-sm text-primary-foreground/70">売上</span>
-                <span className="font-semibold">¥ {fmt(shipment.customerPrice)}</span>
+            {editRevenueMode ? (
+              <div className="px-5 py-4 space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-primary-foreground/70">売上（円）</label>
+                  <input
+                    type="number"
+                    value={formData.customerPrice}
+                    onChange={e => setFormData({...formData, customerPrice: e.target.value})}
+                    className="w-full bg-primary-foreground/10 border border-primary-foreground/20 rounded-lg px-3 py-2 text-sm text-primary-foreground placeholder:text-primary-foreground/40 outline-none focus:border-primary-foreground/40"
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-primary-foreground/70">原価（円）</label>
+                  <input
+                    type="number"
+                    value={formData.carrierCost}
+                    onChange={e => setFormData({...formData, carrierCost: e.target.value})}
+                    className="w-full bg-primary-foreground/10 border border-primary-foreground/20 rounded-lg px-3 py-2 text-sm text-primary-foreground placeholder:text-primary-foreground/40 outline-none focus:border-primary-foreground/40"
+                    placeholder="0"
+                  />
+                </div>
+                {formData.customerPrice && formData.carrierCost && (
+                  <div className="border-t border-primary-foreground/10 pt-3 flex justify-between">
+                    <span className="text-sm font-bold">粗利（試算）</span>
+                    <div className="text-right">
+                      <div className="font-bold">¥ {fmt(Number(formData.customerPrice) - Number(formData.carrierCost))}</div>
+                      <div className="text-xs text-primary-foreground/60">
+                        {Math.round(((Number(formData.customerPrice) - Number(formData.carrierCost)) / Number(formData.customerPrice)) * 1000) / 10}%
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between items-center px-5 py-3">
-                <span className="text-sm text-primary-foreground/70">原価</span>
-                <span className="font-semibold">¥ {fmt(shipment.carrierCost)}</span>
-              </div>
-              <div className="flex justify-between items-center px-5 py-4">
-                <span className="text-sm font-bold">粗利</span>
-                <div className="text-right">
-                  <div className="text-xl font-bold">¥ {fmt(grossProfit)}</div>
-                  <div className="text-xs text-primary-foreground/60">{profitRate}%</div>
+            ) : (
+              <div className="divide-y divide-primary-foreground/10">
+                <div className="flex justify-between items-center px-5 py-3">
+                  <span className="text-sm text-primary-foreground/70">売上</span>
+                  <span className="font-semibold">¥ {fmt(shipment.customerPrice)}</span>
+                </div>
+                <div className="flex justify-between items-center px-5 py-3">
+                  <span className="text-sm text-primary-foreground/70">原価</span>
+                  <span className="font-semibold">¥ {fmt(shipment.carrierCost)}</span>
+                </div>
+                <div className="flex justify-between items-center px-5 py-4">
+                  <span className="text-sm font-bold">粗利</span>
+                  <div className="text-right">
+                    <div className="text-xl font-bold">¥ {fmt(grossProfit)}</div>
+                    <div className="text-xs text-primary-foreground/60">{profitRate}%</div>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* 決済ステータス */}
