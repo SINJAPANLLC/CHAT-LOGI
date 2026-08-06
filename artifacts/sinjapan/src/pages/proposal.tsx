@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { customFetch } from '@workspace/api-client-react/custom-fetch';
 import {
   Truck, Calendar, Box, CheckCircle, ArrowLeft, MapPin, Package,
-  Info, CreditCard, ShieldCheck, Loader2, Pencil, X, Save, MessageSquare,
+  Info, CreditCard, ShieldCheck, Loader2, Pencil, X, Save, MessageSquare, Plus, Trash2,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
@@ -125,6 +125,32 @@ export default function Proposal() {
       .catch(() => {});
   }, []);
 
+  // ── Extra stops ─────────────────────────────────────────────────────────────
+  type Stop = { type: 'pickup' | 'delivery'; address: string; datetime: string };
+  const [extraStops, setExtraStops] = useState<Stop[]>([]);
+  const [editExtraStops, setEditExtraStops] = useState<Stop[]>([]);
+
+  useEffect(() => {
+    if (!shipmentId) return;
+    const token = localStorage.getItem('sinjapan_auth_token');
+    fetch(`/api/shipments/${shipmentId}/stops`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.stops) setExtraStops(d.stops); })
+      .catch(() => {});
+  }, [shipmentId]);
+
+  const saveStops = async (stops: Stop[]) => {
+    const token = localStorage.getItem('sinjapan_auth_token');
+    await fetch(`/api/shipments/${shipmentId}/stops`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ stops }),
+    });
+    setExtraStops(stops);
+  };
+
   // ── Edit mode state ─────────────────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -153,6 +179,7 @@ export default function Proposal() {
       notes:            s?.notes            ?? '',
       desiredPrice:     s?.desiredPrice     ?? 0,
     });
+    setEditExtraStops([...extraStops]);
     setIsEditing(true);
   };
 
@@ -166,6 +193,7 @@ export default function Proposal() {
       };
       if (!body.desiredPrice) delete body.desiredPrice;
       await customFetch(`/api/shipments/${shipmentId}`, { method: 'PATCH', body: JSON.stringify(body) });
+      await saveStops(editExtraStops);
       queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
       toast({ title: '内容を更新しました' });
       setIsEditing(false);
@@ -386,23 +414,94 @@ export default function Proposal() {
           </div>
 
           <div>
-            {/* ── ルート（住所は固定・日時は編集可） ── */}
+            {/* ── ルート（住所は固定・日時は編集可・複数地対応） ── */}
             <Row icon={<MapPin className="h-4 w-4 shrink-0" />} label="ルート">
               <div className="space-y-3">
+                {/* 集荷先① */}
                 <div>
-                  <span className="text-xs text-muted-foreground block mb-1">集荷</span>
+                  <span className="text-xs text-muted-foreground block mb-1">集荷①</span>
                   {isEditing
                     ? <TextInput value={editData.pickupDatetime} onChange={v => set('pickupDatetime', v)} placeholder="例: 2026-08-10 10:00" />
                     : <p className="font-medium">{formatDatetime(shipment.pickupDatetime)}</p>}
                   {shipment.pickupAddress && <p className="text-muted-foreground mt-0.5 text-xs">{shipment.pickupAddress}</p>}
                 </div>
-                <div>
-                  <span className="text-xs text-muted-foreground block mb-1">納品</span>
+                {/* 追加集荷先 */}
+                {(isEditing ? editExtraStops : extraStops).filter(s => s.type === 'pickup').map((s, i) => {
+                  const allStops = isEditing ? editExtraStops : extraStops;
+                  const idx = allStops.indexOf(s);
+                  return (
+                    <div key={i} className="border-l-2 border-blue-200 pl-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-muted-foreground">集荷{i + 2}</span>
+                        {isEditing && (
+                          <button onClick={() => setEditExtraStops(editExtraStops.filter((_, j) => j !== idx))} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      {isEditing ? (
+                        <div className="space-y-1.5">
+                          <TextInput value={s.address} onChange={v => setEditExtraStops(editExtraStops.map((es, j) => j === idx ? {...es, address: v} : es))} placeholder="住所" />
+                          <TextInput value={s.datetime} onChange={v => setEditExtraStops(editExtraStops.map((es, j) => j === idx ? {...es, datetime: v} : es))} placeholder="日時" />
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-medium">{s.datetime || '未定'}</p>
+                          {s.address && <p className="text-muted-foreground mt-0.5 text-xs">{s.address}</p>}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+                {isEditing && (
+                  <button onClick={() => setEditExtraStops([...editExtraStops, {type: 'pickup', address: '', datetime: ''}])}
+                    className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium">
+                    <Plus className="h-3.5 w-3.5" />集荷先を追加
+                  </button>
+                )}
+
+                {/* 納品先① */}
+                <div className="pt-1">
+                  <span className="text-xs text-muted-foreground block mb-1">納品①</span>
                   {isEditing
                     ? <TextInput value={editData.deliveryDeadline} onChange={v => set('deliveryDeadline', v)} placeholder="例: 2026-08-10 17:00" />
                     : <p className="font-medium">{formatDatetime(shipment.deliveryDeadline)}</p>}
                   {shipment.deliveryAddress && <p className="text-muted-foreground mt-0.5 text-xs">{shipment.deliveryAddress}</p>}
                 </div>
+                {/* 追加納品先 */}
+                {(isEditing ? editExtraStops : extraStops).filter(s => s.type === 'delivery').map((s, i) => {
+                  const allStops = isEditing ? editExtraStops : extraStops;
+                  const idx = allStops.indexOf(s);
+                  return (
+                    <div key={i} className="border-l-2 border-green-200 pl-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-muted-foreground">納品{i + 2}</span>
+                        {isEditing && (
+                          <button onClick={() => setEditExtraStops(editExtraStops.filter((_, j) => j !== idx))} className="text-muted-foreground hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
+                      {isEditing ? (
+                        <div className="space-y-1.5">
+                          <TextInput value={s.address} onChange={v => setEditExtraStops(editExtraStops.map((es, j) => j === idx ? {...es, address: v} : es))} placeholder="住所" />
+                          <TextInput value={s.datetime} onChange={v => setEditExtraStops(editExtraStops.map((es, j) => j === idx ? {...es, datetime: v} : es))} placeholder="日時" />
+                        </div>
+                      ) : (
+                        <>
+                          <p className="font-medium">{s.datetime || '未定'}</p>
+                          {s.address && <p className="text-muted-foreground mt-0.5 text-xs">{s.address}</p>}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+                {isEditing && (
+                  <button onClick={() => setEditExtraStops([...editExtraStops, {type: 'delivery', address: '', datetime: ''}])}
+                    className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800 font-medium">
+                    <Plus className="h-3.5 w-3.5" />納品先を追加
+                  </button>
+                )}
               </div>
             </Row>
 
