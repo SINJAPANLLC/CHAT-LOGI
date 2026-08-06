@@ -101,6 +101,7 @@ router.post("/square/authorize", requireAuth, async (req, res): Promise<void> =>
 
   const data = await squareRes.json() as any;
   if (!squareRes.ok) {
+    console.error("[Square] /v2/payments エラー status:", squareRes.status, "errors:", JSON.stringify(data.errors));
     res.status(502).json({ error: "Square API エラー", detail: data.errors });
     return;
   }
