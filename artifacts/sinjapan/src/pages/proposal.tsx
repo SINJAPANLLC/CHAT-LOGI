@@ -160,8 +160,9 @@ export default function Proposal() {
         <div className="w-full max-w-xl space-y-6 animate-in fade-in duration-300">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">お支払いカードの登録</h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              配車確定時に与信確認（オーソリ）を行います。実際のお引き落としは納品完了後です。
+            <p className="text-muted-foreground mt-1 text-sm leading-relaxed">
+              依頼送信時に与信確認（オーソリ）を行います。実際のお引き落としは納品完了後です。<br />
+              なお、配車のご手配が確定するまでには時間をいただく場合があり、配車をお約束するものではありません。
             </p>
           </div>
 
