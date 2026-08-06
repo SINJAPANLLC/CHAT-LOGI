@@ -190,7 +190,7 @@ export function UserLayout({ children }: { children: React.ReactNode }) {
             <img
               src="/logo.jpg"
               alt="Chat LOGI"
-              className={`h-5 w-auto ${isLoggedIn && sidebarOpen ? 'md:hidden' : ''}`}
+              className={`h-7 w-auto ${isLoggedIn && sidebarOpen ? 'md:hidden' : ''}`}
             />
           </Link>
 
