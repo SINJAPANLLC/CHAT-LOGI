@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  Mail, Send, Users, Plus, Trash2, Loader2, Sparkles, Upload,
+  Mail, Send, Users, Plus, Trash2, Loader2, Upload,
   List, History, ChevronDown, Check, Eye, X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -94,13 +94,6 @@ function ProspectList({ onSelectForSend }: { onSelectForSend: (ids: number[]) =>
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number[]>([]);
 
-  // AI生成ダイアログ
-  const [showGenDialog, setShowGenDialog] = useState(false);
-  const [genIndustry, setGenIndustry] = useState('');
-  const [genPrefecture, setGenPrefecture] = useState('');
-  const [genCount, setGenCount] = useState('10');
-  const [generating, setGenerating] = useState(false);
-
   // 手動追加ダイアログ
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addForm, setAddForm] = useState({ companyName: '', contactName: '', email: '', phone: '', industry: '', prefecture: '' });
@@ -124,19 +117,6 @@ function ProspectList({ onSelectForSend }: { onSelectForSend: (ids: number[]) =>
   };
   const toggle = (id: number) => setSelected(s => s.includes(id) ? s.filter(x => x !== id) : [...s, id]);
 
-  const handleGenerate = async () => {
-    if (!genIndustry || !genPrefecture) { toast({ title: '業種と都道府県を入力してください', variant: 'destructive' }); return; }
-    setGenerating(true);
-    try {
-      const r = await apiFetch('/api/admin/prospects/generate', {
-        method: 'POST', body: JSON.stringify({ industry: genIndustry, prefecture: genPrefecture, count: Number(genCount) }),
-      });
-      toast({ title: `${r.inserted}件のリストを生成しました` });
-      setShowGenDialog(false); setGenIndustry(''); setGenPrefecture(''); setGenCount('10');
-      load();
-    } catch (e: any) { toast({ title: e.message, variant: 'destructive' }); }
-    finally { setGenerating(false); }
-  };
 
   const handleAdd = async () => {
     if (!addForm.companyName || !addForm.email) { toast({ title: '会社名とメールアドレスは必須です', variant: 'destructive' }); return; }
@@ -198,10 +178,7 @@ function ProspectList({ onSelectForSend }: { onSelectForSend: (ids: number[]) =>
 
       {/* ツールバー */}
       <div className="flex flex-wrap gap-2 items-center">
-        <Button onClick={() => setShowGenDialog(true)} className="bg-black text-white hover:bg-black/90 gap-1.5">
-          <Sparkles className="h-4 w-4" />AI自動生成
-        </Button>
-        <Button variant="outline" onClick={() => setShowAddDialog(true)} className="gap-1.5">
+        <Button onClick={() => setShowAddDialog(true)} className="bg-black text-white hover:bg-black/90 gap-1.5">
           <Plus className="h-4 w-4" />手動追加
         </Button>
         <Button variant="outline" onClick={() => csvRef.current?.click()} className="gap-1.5">
@@ -227,8 +204,7 @@ function ProspectList({ onSelectForSend }: { onSelectForSend: (ids: number[]) =>
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
       ) : prospects.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm border border-dashed rounded-xl">
-          <Sparkles className="h-8 w-8 mx-auto mb-3 opacity-30" />
-          <p>「AI自動生成」で見込みリストを作成してください</p>
+          <p>手動追加またはCSV取込でリストを作成してください</p>
         </div>
       ) : (
         <div className="rounded-xl border border-border overflow-x-auto shadow-sm">
@@ -267,47 +243,6 @@ function ProspectList({ onSelectForSend }: { onSelectForSend: (ids: number[]) =>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* AI生成ダイアログ */}
-      {showGenDialog && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                <h2 className="text-lg font-bold">AI リスト自動生成</h2>
-              </div>
-              <button onClick={() => setShowGenDialog(false)}><X className="h-5 w-5 text-muted-foreground" /></button>
-            </div>
-            <p className="text-sm text-muted-foreground">業種・地域を指定するとAIが見込み企業リストを自動生成します。</p>
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <Label>業種 <span className="text-red-500">*</span></Label>
-                <Input value={genIndustry} onChange={e => setGenIndustry(e.target.value)} placeholder="例: 食品メーカー、製造業、小売業" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>都道府県 <span className="text-red-500">*</span></Label>
-                <Input value={genPrefecture} onChange={e => setGenPrefecture(e.target.value)} placeholder="例: 東京都、大阪府、愛知県" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>生成件数</Label>
-                <select value={genCount} onChange={e => setGenCount(e.target.value)} className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background">
-                  {[5,10,15,20,30].map(n => <option key={n} value={n}>{n}件</option>)}
-                </select>
-              </div>
-            </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-700 leading-relaxed">
-              ⚠ AIが生成するメールアドレスは架空のものです。実際の担当者アドレスに編集してからご利用ください。
-            </div>
-            <div className="flex gap-2 justify-end pt-1">
-              <Button variant="outline" onClick={() => setShowGenDialog(false)}>キャンセル</Button>
-              <Button onClick={handleGenerate} disabled={generating} className="bg-black text-white hover:bg-black/90 gap-1.5">
-                {generating ? <><Loader2 className="h-4 w-4 animate-spin" />生成中…</> : <><Sparkles className="h-4 w-4" />生成する</>}
-              </Button>
-            </div>
-          </div>
         </div>
       )}
 
