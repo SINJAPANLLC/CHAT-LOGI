@@ -191,9 +191,14 @@ router.patch("/shipments/:id", requireAuth, async (req, res): Promise<void> => {
     }
   }
 
-  // 手動で両方指定された場合は粗利を計算
-  if (updates.customerPrice != null && updates.carrierCost != null && !hasPricingChange) {
-    updates.grossProfit = (Number(updates.customerPrice) - Number(updates.carrierCost)).toString();
+  // 請求額・原価のどちらか一方でも変更された場合は粗利を再計算
+  if ((updates.customerPrice != null || updates.carrierCost != null) && !hasPricingChange) {
+    const [cur] = await db.select().from(shipmentsTable).where(eq(shipmentsTable.id, id));
+    if (cur) {
+      const cp = Number(updates.customerPrice ?? cur.customerPrice ?? 0);
+      const cc = Number(updates.carrierCost  ?? cur.carrierCost  ?? 0);
+      updates.grossProfit = (cp - cc).toString();
+    }
   }
 
   const [shipment] = await db
