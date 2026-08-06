@@ -83,7 +83,7 @@ export interface PricingConfig {
 }
 
 export const DEFAULT_CONFIG: PricingConfig = {
-  margin: 0.30,
+  margin: 0.15,
   minPrice: 10000,
   basePrice: {
     軽貨物: { short: 10000, mid: 16000, long: 22000, xlong: 32000 },
