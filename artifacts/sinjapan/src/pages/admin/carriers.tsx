@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { useListCarriers, useCreateCarrier } from '@workspace/api-client-react';
+import { useListCarriers, useCreateCarrier, useUpdateCarrier } from '@workspace/api-client-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Plus, Star } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Loader2, Plus, Pencil } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 const FIELDS = [
   { label: '会社名 *', key: 'companyName', placeholder: '株式会社物流' },
@@ -24,75 +25,159 @@ const EMPTY = {
   serviceAreas: '', vehicleTypes: '', bankAccount: '', paymentTerms: '', notes: ''
 };
 
+type FormData = typeof EMPTY;
+
+function CarrierForm({
+  data,
+  onChange,
+  onSubmit,
+  onCancel,
+  isPending,
+  submitLabel,
+}: {
+  data: FormData;
+  onChange: (key: string, val: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+  submitLabel: string;
+}) {
+  return (
+    <>
+      <div className="grid gap-4 py-4">
+        {FIELDS.map(({ label, key, placeholder }) => (
+          <div key={key} className="space-y-1.5">
+            <Label className="text-sm">{label}</Label>
+            <Input
+              value={(data as any)[key]}
+              onChange={e => onChange(key, e.target.value)}
+              placeholder={placeholder}
+            />
+          </div>
+        ))}
+        <div className="space-y-1.5">
+          <Label className="text-sm">Memo</Label>
+          <Textarea
+            value={data.notes}
+            onChange={e => onChange('notes', e.target.value)}
+            placeholder="社内メモ"
+            className="min-h-[72px]"
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel}>キャンセル</Button>
+        <Button onClick={onSubmit} disabled={isPending || !data.companyName}>
+          {isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+          {submitLabel}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
 export default function AdminCarriers() {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const { data: carriers, isLoading } = useListCarriers();
   const createCarrier = useCreateCarrier();
+  const updateCarrier = useUpdateCarrier();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [formData, setFormData] = useState<typeof EMPTY>({ ...EMPTY });
+  const [editCarrier, setEditCarrier] = useState<any | null>(null);
+  const [addForm, setAddForm] = useState<FormData>({ ...EMPTY });
+  const [editForm, setEditForm] = useState<FormData>({ ...EMPTY });
 
-  const set = (key: string, val: string) => setFormData(prev => ({ ...prev, [key]: val }));
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['/api/carriers'] });
+
+  const setAdd = (k: string, v: string) => setAddForm(p => ({ ...p, [k]: v }));
+  const setEdit = (k: string, v: string) => setEditForm(p => ({ ...p, [k]: v }));
 
   const handleCreate = async () => {
     try {
-      await createCarrier.mutateAsync({ data: formData as any });
+      await createCarrier.mutateAsync({ data: addForm as any });
       setIsAddOpen(false);
-      setFormData({ ...EMPTY });
-      queryClient.invalidateQueries({ queryKey: ['/api/carriers'] });
-    } catch (e) {
-      console.error(e);
+      setAddForm({ ...EMPTY });
+      invalidate();
+      toast({ title: '登録しました' });
+    } catch {
+      toast({ title: '登録に失敗しました', variant: 'destructive' });
     }
   };
+
+  const openEdit = (c: any) => {
+    setEditCarrier(c);
+    setEditForm({
+      companyName: c.companyName ?? '',
+      contactName: c.contactName ?? '',
+      phone: c.phone ?? '',
+      fax: c.fax ?? '',
+      serviceAreas: c.serviceAreas ?? '',
+      vehicleTypes: c.vehicleTypes ?? '',
+      bankAccount: c.bankAccount ?? '',
+      paymentTerms: c.paymentTerms ?? '',
+      notes: c.notes ?? '',
+    });
+  };
+
+  const handleUpdate = async () => {
+    if (!editCarrier) return;
+    try {
+      await updateCarrier.mutateAsync({ id: editCarrier.id, data: editForm as any });
+      setEditCarrier(null);
+      invalidate();
+      toast({ title: '更新しました' });
+    } catch {
+      toast({ title: '更新に失敗しました', variant: 'destructive' });
+    }
+  };
+
+  const HEADERS = ['会社名', '担当者', '電話', 'FAX', '対応エリア', '保有車両', '振込先', '支払いサイト', 'Memo', ''];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight">運送会社管理</h1>
-
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2"><Plus className="h-4 w-4" />新規登録</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>運送会社の登録</DialogTitle></DialogHeader>
-            <div className="grid gap-4 py-4">
-              {FIELDS.map(({ label, key, placeholder }) => (
-                <div key={key} className="space-y-1.5">
-                  <Label className="text-sm">{label}</Label>
-                  <Input
-                    value={(formData as any)[key]}
-                    onChange={e => set(key, e.target.value)}
-                    placeholder={placeholder}
-                  />
-                </div>
-              ))}
-              <div className="space-y-1.5">
-                <Label className="text-sm">Memo</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={e => set('notes', e.target.value)}
-                  placeholder="社内メモ"
-                  className="min-h-[72px]"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddOpen(false)}>キャンセル</Button>
-              <Button onClick={handleCreate} disabled={createCarrier.isPending || !formData.companyName}>
-                {createCarrier.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                登録する
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button className="gap-2" onClick={() => { setAddForm({ ...EMPTY }); setIsAddOpen(true); }}>
+          <Plus className="h-4 w-4" />新規登録
+        </Button>
       </div>
+
+      {/* 新規登録ダイアログ */}
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>運送会社の登録</DialogTitle></DialogHeader>
+          <CarrierForm
+            data={addForm}
+            onChange={setAdd}
+            onSubmit={handleCreate}
+            onCancel={() => setIsAddOpen(false)}
+            isPending={createCarrier.isPending}
+            submitLabel="登録する"
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* 編集ダイアログ */}
+      <Dialog open={!!editCarrier} onOpenChange={open => { if (!open) setEditCarrier(null); }}>
+        <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>{editCarrier?.companyName} を編集</DialogTitle></DialogHeader>
+          <CarrierForm
+            data={editForm}
+            onChange={setEdit}
+            onSubmit={handleUpdate}
+            onCancel={() => setEditCarrier(null)}
+            isPending={updateCarrier.isPending}
+            submitLabel="保存する"
+          />
+        </DialogContent>
+      </Dialog>
 
       <div className="rounded-xl border border-border shadow-sm overflow-x-auto">
         <table className="w-full text-sm min-w-[900px]">
           <thead>
             <tr className="bg-muted/40 border-b border-border">
-              {['会社名', '担当者', '電話', 'FAX', '対応エリア', '保有車両', '振込先', '支払いサイト', '評価', 'Memo'].map(h => (
+              {HEADERS.map(h => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">{h}</th>
               ))}
             </tr>
@@ -100,13 +185,13 @@ export default function AdminCarriers() {
           <tbody className="divide-y divide-border bg-card">
             {isLoading ? (
               <tr>
-                <td colSpan={10} className="py-16 text-center">
+                <td colSpan={HEADERS.length} className="py-16 text-center">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto" />
                 </td>
               </tr>
             ) : !carriers?.length ? (
               <tr>
-                <td colSpan={10} className="py-16 text-center text-muted-foreground">
+                <td colSpan={HEADERS.length} className="py-16 text-center text-muted-foreground">
                   運送会社が登録されていません
                 </td>
               </tr>
@@ -120,14 +205,15 @@ export default function AdminCarriers() {
                 <td className="px-4 py-3.5 text-xs text-muted-foreground">{c.vehicleTypes || '—'}</td>
                 <td className="px-4 py-3.5 text-xs">{c.bankAccount || '—'}</td>
                 <td className="px-4 py-3.5 text-xs whitespace-nowrap">{c.paymentTerms || '—'}</td>
-                <td className="px-4 py-3.5 whitespace-nowrap">
-                  {c.rating ? (
-                    <span className="inline-flex items-center gap-1 text-amber-500 font-medium">
-                      <Star className="h-3.5 w-3.5 fill-current" />{c.rating.toFixed(1)}
-                    </span>
-                  ) : '—'}
-                </td>
                 <td className="px-4 py-3.5 text-xs text-muted-foreground max-w-[160px] truncate">{c.notes || '—'}</td>
+                <td className="px-4 py-3.5">
+                  <button
+                    onClick={() => openEdit(c)}
+                    className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
