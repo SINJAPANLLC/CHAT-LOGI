@@ -93,7 +93,7 @@ export default function Home() {
 
     if (!user) {
       localStorage.setItem(DRAFT_KEY, text);
-      setLocation('/login');
+      setLocation('/register');
       return;
     }
 
