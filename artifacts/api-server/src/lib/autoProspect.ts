@@ -58,48 +58,38 @@ async function fetchHtml(url: string, timeout = 10_000): Promise<string> {
   return res.text();
 }
 
-// ── DDG HTML パーサー（複数ページ対応） ──────────────────────────────────────
-function parseDDGUrls(html: string): string[] {
-  const urls: string[] = [];
-  const uddgRe = /uddg=([^&"]+)/g;
-  let m: RegExpExecArray | null;
-  while ((m = uddgRe.exec(html)) !== null) {
-    try {
-      const decoded = decodeURIComponent(m[1]);
-      if (decoded.startsWith("http") && !decoded.includes("duckduckgo")) urls.push(decoded);
-    } catch { /* skip */ }
-  }
-  const directRe = /href="(https?:\/\/[^"]+)"/g;
-  while ((m = directRe.exec(html)) !== null) {
-    const u = m[1];
-    if (!u.includes("duckduckgo") && !u.includes("duck.com")) urls.push(u);
-  }
-  return urls;
-}
+// ── Brave Search API（VPS IPのDDG CAPTCHAブロックを回避） ────────────────────
+async function searchBrave(query: string): Promise<string[]> {
+  const apiKey = process.env.BRAVE_SEARCH_API_KEY;
+  if (!apiKey) throw new Error("BRAVE_SEARCH_API_KEY が未設定です");
 
-async function searchDDGPage(query: string, offset: number, timeout = 18_000): Promise<string[]> {
-  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=jp-ja&s=${offset}`;
-  try {
-    const html = await fetchHtml(url, timeout);
-    return parseDDGUrls(html);
-  } catch {
-    return []; // タイムアウト・エラーは空配列で続行
-  }
-}
+  const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&country=JP&search_lang=ja&count=20&result_filter=web`;
+  const res = await fetch(url, {
+    headers: {
+      "Accept": "application/json",
+      "Accept-Encoding": "gzip",
+      "X-Subscription-Token": apiKey,
+    },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`Brave API エラー: HTTP ${res.status}`);
 
-async function searchDDG(query: string): Promise<string[]> {
-  const allUrls: string[] = [];
-  // ページ1 → ページ2 → ページ3 と順番に取得（失敗したら次ページへ）
-  for (const offset of [0, 30, 60]) {
-    const urls = await searchDDGPage(query, offset);
-    allUrls.push(...urls);
-    if (urls.length > 0) break; // 取得できたら次ページは不要
-    await new Promise(r => setTimeout(r, 2_000)); // ページ間ウェイト
-  }
-  const unique = [...new Set(allUrls)];
-  return unique
+  const data = await res.json() as any;
+  const results: any[] = data?.web?.results ?? [];
+  return results
+    .map((r: any) => r.url as string)
+    .filter(u => u && u.startsWith("http"))
     .sort((a, b) => (b.includes(".co.jp") ? 1 : 0) - (a.includes(".co.jp") ? 1 : 0))
     .slice(0, 12);
+}
+
+async function searchWeb(query: string): Promise<string[]> {
+  try {
+    return await searchBrave(query);
+  } catch (e: any) {
+    // Brave APIキー未設定やエラー時は空配列（ログはメイン処理で記録）
+    throw e;
+  }
 }
 
 // ── サイトからメールを抽出 ───────────────────────────────────────────────────
@@ -242,11 +232,11 @@ export async function runAutoProspect(): Promise<AutoProspectLog> {
 
   for (const q of queries) {
     try {
-      const urls = await searchDDG(q);
+      const urls = await searchWeb(q);
       allUrls.push(...urls);
-      await new Promise(r => setTimeout(r, 1_500)); // rate limit
+      await new Promise(r => setTimeout(r, 1_000)); // rate limit
     } catch (e: any) {
-      errors.push(`DDG検索エラー: ${e.message}`);
+      errors.push(`検索エラー: ${e.message}`);
     }
   }
 
