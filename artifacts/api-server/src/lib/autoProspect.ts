@@ -60,9 +60,20 @@ async function fetchHtml(url: string, timeout = 10_000): Promise<string> {
 
 // ── DDG HTML パーサー ─────────────────────────────────────────────────────────
 async function searchDDG(query: string): Promise<string[]> {
-  const html = await fetchHtml(
-    `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=jp-ja`,
-  );
+  let html: string;
+  try {
+    html = await fetchHtml(
+      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=jp-ja`,
+      18_000,
+    );
+  } catch {
+    // リトライ（3秒待ち）
+    await new Promise(r => setTimeout(r, 3_000));
+    html = await fetchHtml(
+      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=jp-ja`,
+      18_000,
+    );
+  }
 
   const urls: string[] = [];
 
@@ -261,8 +272,7 @@ export async function runAutoProspect(): Promise<AutoProspectLog> {
 
   if (candidates.length === 0) {
     errors.push("候補サイトからメールアドレスを取得できませんでした");
-    lastRunLog = { ranAt, industry, prefecture, found: 0, sent: 0, errors };
-    return lastRunLog;
+    // クロール失敗でも既存の未送信リストへの送信は続行する
   }
 
   // ── 3. AI でスコアリング ──────────────────────────────────────────────────
