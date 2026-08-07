@@ -103,7 +103,14 @@ export default function Proposal() {
   const { toast } = useToast();
 
   const { data: shipment, isLoading } = useGetShipment(shipmentId, {
-    query: { enabled: !!shipmentId, queryKey: getGetShipmentQueryKey(shipmentId) }
+    query: {
+      enabled: !!shipmentId,
+      queryKey: getGetShipmentQueryKey(shipmentId),
+      // 提案ページ初回表示時は必ず最新データをサーバーから取得する
+      // （チャットページからのキャッシュ経由で古いデータが表示されるのを防ぐ）
+      refetchOnMount: 'always',
+      staleTime: 0,
+    }
   });
 
   const updateStatus = useUpdateShipmentStatus();

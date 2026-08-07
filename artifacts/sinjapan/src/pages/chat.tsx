@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRoute, useLocation } from 'wouter';
 import { useListConversations, useSendMessage, useGetShipment, getGetShipmentQueryKey, getListConversationsQueryKey } from '@workspace/api-client-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { ArrowUp, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
@@ -9,6 +10,7 @@ export default function Chat() {
   const [, params] = useRoute('/chat/:id');
   const shipmentId = Number(params?.id);
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -58,8 +60,10 @@ export default function Chat() {
       return; // skip redirect once; status reset is happening in background
     }
 
+    // キャッシュを無効化してから遷移（古いキャッシュが提案ページに渡るのを防ぐ）
+    queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
     setLocation(`/proposal/${shipmentId}`);
-  }, [shipment?.status, shipmentId, setLocation]);
+  }, [shipment?.status, shipmentId, setLocation, queryClient]);
 
   const doSend = async (text: string) => {
     if (!text.trim() || !shipmentId || sendMessage.isPending) return;
@@ -67,7 +71,11 @@ export default function Chat() {
     try {
       const res = await sendMessage.mutateAsync({ id: shipmentId, data: { message: text } });
       await refetch();
-      if (res.isComplete) setLocation(`/proposal/${shipmentId}`);
+      if (res.isComplete) {
+        // 提案データがDBに書き込まれた後にキャッシュを無効化して遷移
+        await queryClient.invalidateQueries({ queryKey: getGetShipmentQueryKey(shipmentId) });
+        setLocation(`/proposal/${shipmentId}`);
+      }
     } catch {
       setMessage(text);
     }
