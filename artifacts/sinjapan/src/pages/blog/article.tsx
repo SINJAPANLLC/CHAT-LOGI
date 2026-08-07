@@ -60,9 +60,29 @@ export default function BlogArticle() {
     ]).then(([p, all]) => {
       setPost(p);
       setRelated((all as Post[]).filter((a: Post) => a.slug !== slug && a.category === p.category).slice(0, 3));
-      document.title = p.metaTitle ?? `${p.title}｜Chat LOGI ブログ`;
-      const desc = document.querySelector('meta[name="description"]');
-      if (desc && p.metaDescription) desc.setAttribute('content', p.metaDescription);
+      const pageTitle = p.metaTitle ?? `${p.title}｜Chat LOGI ブログ`;
+      document.title = pageTitle;
+      const baseUrl = 'https://chatlogi.jp';
+      const canonicalUrl = `${baseUrl}/blog/${p.slug}`;
+      // meta description
+      const setMeta = (sel: string, attr: string, val: string) => {
+        let el = document.querySelector(sel);
+        if (!el) { el = document.createElement('meta'); document.head.appendChild(el); }
+        el.setAttribute(attr, val);
+      };
+      if (p.metaDescription) setMeta('meta[name="description"]', 'content', p.metaDescription);
+      // canonical
+      let canon = document.querySelector('link[rel="canonical"]') as HTMLLinkElement | null;
+      if (!canon) { canon = document.createElement('link'); canon.rel = 'canonical'; document.head.appendChild(canon); }
+      canon.href = canonicalUrl;
+      // OG tags
+      setMeta('meta[property="og:title"]', 'content', pageTitle);
+      setMeta('meta[property="og:description"]', 'content', p.metaDescription ?? p.excerpt);
+      setMeta('meta[property="og:url"]', 'content', canonicalUrl);
+      setMeta('meta[property="og:type"]', 'content', 'article');
+      // Twitter
+      setMeta('meta[name="twitter:title"]', 'content', pageTitle);
+      setMeta('meta[name="twitter:description"]', 'content', p.metaDescription ?? p.excerpt);
     }).catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [slug]);

@@ -82,4 +82,32 @@ router.post("/admin/seo", requireAdmin, async (req, res): Promise<void> => {
   res.json({ ok: true });
 });
 
+// ── サイトマップ Ping（Google・Bing に送信） ──────────────────────────────────
+router.post("/admin/seo/sitemap-ping", requireAdmin, async (_req, res): Promise<void> => {
+  const siteUrlRow = await db.select().from(settingsTable)
+    .where(eq(settingsTable.key, "seo_siteUrl")).limit(1).catch(() => []);
+  const baseUrl = (siteUrlRow[0]?.value ?? process.env.SITE_URL ?? "https://chatlogi.jp").replace(/\/$/, "");
+  const sitemapUrl = encodeURIComponent(`${baseUrl}/sitemap.xml`);
+
+  const results: { engine: string; ok: boolean; status?: number; error?: string }[] = [];
+
+  // Google
+  try {
+    const r = await fetch(`https://www.google.com/ping?sitemap=${sitemapUrl}`, { signal: AbortSignal.timeout(10_000) });
+    results.push({ engine: "Google", ok: r.ok, status: r.status });
+  } catch (e: any) {
+    results.push({ engine: "Google", ok: false, error: e.message });
+  }
+
+  // Bing
+  try {
+    const r = await fetch(`https://www.bing.com/ping?sitemap=${sitemapUrl}`, { signal: AbortSignal.timeout(10_000) });
+    results.push({ engine: "Bing", ok: r.ok, status: r.status });
+  } catch (e: any) {
+    results.push({ engine: "Bing", ok: false, error: e.message });
+  }
+
+  res.json({ sitemapUrl: decodeURIComponent(sitemapUrl), results });
+});
+
 export default router;
