@@ -29,7 +29,7 @@ const SEARCH_QUERIES_TMPL = (industry: string, pref: string) => [
 ];
 
 const EMAIL_RE = /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g;
-const SKIP_DOMAINS = ["example", "sentry", "schema.org", "w3.org", "google", "mailto:?"];
+const SKIP_DOMAINS = ["example", "sample", "sentry", "schema.org", "w3.org", "google", "mailto:?", "test.", "dummy"];
 
 // ── 直近の実行ログ（メモリ、再起動でリセット） ────────────────────────────────
 export interface AutoProspectLog {
@@ -58,46 +58,45 @@ async function fetchHtml(url: string, timeout = 10_000): Promise<string> {
   return res.text();
 }
 
-// ── DDG HTML パーサー ─────────────────────────────────────────────────────────
-async function searchDDG(query: string): Promise<string[]> {
-  let html: string;
-  try {
-    html = await fetchHtml(
-      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=jp-ja`,
-      18_000,
-    );
-  } catch {
-    // リトライ（3秒待ち）
-    await new Promise(r => setTimeout(r, 3_000));
-    html = await fetchHtml(
-      `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=jp-ja`,
-      18_000,
-    );
-  }
-
+// ── DDG HTML パーサー（複数ページ対応） ──────────────────────────────────────
+function parseDDGUrls(html: string): string[] {
   const urls: string[] = [];
-
-  // href="//duckduckgo.com/l/?uddg=ENCODED" パターン
   const uddgRe = /uddg=([^&"]+)/g;
   let m: RegExpExecArray | null;
   while ((m = uddgRe.exec(html)) !== null) {
     try {
       const decoded = decodeURIComponent(m[1]);
-      if (decoded.startsWith("http") && !decoded.includes("duckduckgo")) {
-        urls.push(decoded);
-      }
+      if (decoded.startsWith("http") && !decoded.includes("duckduckgo")) urls.push(decoded);
     } catch { /* skip */ }
   }
-
-  // href="https://..." の直接リンク
   const directRe = /href="(https?:\/\/[^"]+)"/g;
   while ((m = directRe.exec(html)) !== null) {
     const u = m[1];
     if (!u.includes("duckduckgo") && !u.includes("duck.com")) urls.push(u);
   }
+  return urls;
+}
 
-  // 重複除去・日本語ドメイン優先（co.jp があれば先頭に）
-  const unique = [...new Set(urls)];
+async function searchDDGPage(query: string, offset: number, timeout = 18_000): Promise<string[]> {
+  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=jp-ja&s=${offset}`;
+  try {
+    const html = await fetchHtml(url, timeout);
+    return parseDDGUrls(html);
+  } catch {
+    return []; // タイムアウト・エラーは空配列で続行
+  }
+}
+
+async function searchDDG(query: string): Promise<string[]> {
+  const allUrls: string[] = [];
+  // ページ1 → ページ2 → ページ3 と順番に取得（失敗したら次ページへ）
+  for (const offset of [0, 30, 60]) {
+    const urls = await searchDDGPage(query, offset);
+    allUrls.push(...urls);
+    if (urls.length > 0) break; // 取得できたら次ページは不要
+    await new Promise(r => setTimeout(r, 2_000)); // ページ間ウェイト
+  }
+  const unique = [...new Set(allUrls)];
   return unique
     .sort((a, b) => (b.includes(".co.jp") ? 1 : 0) - (a.includes(".co.jp") ? 1 : 0))
     .slice(0, 12);
